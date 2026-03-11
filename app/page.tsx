@@ -47,6 +47,41 @@ const defaultRatio: Ratio = {
   },
 }
 
+function buildRatioSet(
+  commission: number,
+  creation: number,
+  research: number,
+  life: number
+): RatioSet {
+  const sleep = Math.max(0, 100 - (commission + creation + research + life))
+  return { commission, creation, research, life, sleep }
+}
+
+function parseRatioFromUrl(): Ratio | null {
+  if (typeof window === "undefined") return null
+
+  const params = new URLSearchParams(window.location.search)
+  const wd = params.get("wd")
+  const hd = params.get("hd")
+
+  if (!wd || !hd) return null
+
+  const parseGroup = (value: string) => {
+    const parts = value.split(",").map((v) => Number(v))
+    if (parts.length !== 4 || parts.some((n) => Number.isNaN(n))) {
+      return null
+    }
+    return buildRatioSet(parts[0], parts[1], parts[2], parts[3])
+  }
+
+  const weekdays = parseGroup(wd)
+  const holidays = parseGroup(hd)
+
+  if (!weekdays || !holidays) return null
+
+  return { weekdays, holidays }
+}
+
 export default function Home() {
   const YEAR_HOURS = 365 * 24
 
@@ -62,6 +97,12 @@ export default function Home() {
   }
 
   useEffect(() => {
+    const urlRatio = parseRatioFromUrl()
+    if (urlRatio) {
+      setRatio(urlRatio)
+      return
+    }
+
     const saved = localStorage.getItem("ratio")
     if (saved) {
       try {
@@ -209,8 +250,7 @@ export default function Home() {
         calendarCounts.weekdayRemainDaysYear * 24 * (weekdayPercent / 100) +
         calendarCounts.holidayRemainDaysYear * 24 * (holidayPercent / 100) +
         currentDayRemainingHours *
-          ((currentDayType === "weekdays" ? weekdayPercent : holidayPercent) /
-            100)
+          ((currentDayType === "weekdays" ? weekdayPercent : holidayPercent) / 100)
 
       const monthTotalHours =
         calendarCounts.weekdayTotalDaysMonth * 24 * (weekdayPercent / 100) +
@@ -220,12 +260,10 @@ export default function Home() {
         calendarCounts.weekdayRemainDaysMonth * 24 * (weekdayPercent / 100) +
         calendarCounts.holidayRemainDaysMonth * 24 * (holidayPercent / 100) +
         currentDayRemainingHours *
-          ((currentDayType === "weekdays" ? weekdayPercent : holidayPercent) /
-            100)
+          ((currentDayType === "weekdays" ? weekdayPercent : holidayPercent) / 100)
 
       const dayTotalHours =
-        24 *
-        ((currentDayType === "weekdays" ? weekdayPercent : holidayPercent) / 100)
+        24 * ((currentDayType === "weekdays" ? weekdayPercent : holidayPercent) / 100)
 
       const dayRemainHours =
         currentDayRemainingHours *
@@ -265,26 +303,11 @@ export default function Home() {
 
     return {
       total: calcItem(100, 100),
-      commission: calcItem(
-        ratio.weekdays.commission,
-        ratio.holidays.commission
-      ),
-      creation: calcItem(
-        ratio.weekdays.creation,
-        ratio.holidays.creation
-      ),
-      research: calcItem(
-        ratio.weekdays.research,
-        ratio.holidays.research
-      ),
-      life: calcItem(
-        ratio.weekdays.life,
-        ratio.holidays.life
-      ),
-      sleep: calcItem(
-        ratio.weekdays.sleep,
-        ratio.holidays.sleep
-      ),
+      commission: calcItem(ratio.weekdays.commission, ratio.holidays.commission),
+      creation: calcItem(ratio.weekdays.creation, ratio.holidays.creation),
+      research: calcItem(ratio.weekdays.research, ratio.holidays.research),
+      life: calcItem(ratio.weekdays.life, ratio.holidays.life),
+      sleep: calcItem(ratio.weekdays.sleep, ratio.holidays.sleep),
     }
   }, [
     ratio,
@@ -307,6 +330,36 @@ export default function Home() {
 
   function segmentWidth(hoursValue: number) {
     return `${(hoursValue / YEAR_HOURS) * 100}%`
+  }
+
+  function shareUrl() {
+    if (typeof window === "undefined") return ""
+
+    const wd = [
+      ratio.weekdays.commission,
+      ratio.weekdays.creation,
+      ratio.weekdays.research,
+      ratio.weekdays.life,
+    ].join(",")
+
+    const hdValues = [
+      ratio.holidays.commission,
+      ratio.holidays.creation,
+      ratio.holidays.research,
+      ratio.holidays.life,
+    ].join(",")
+
+    return `${window.location.origin}/?wd=${wd}&hd=${hdValues}`
+  }
+
+  async function copyShareUrl() {
+    const url = shareUrl()
+    try {
+      await navigator.clipboard.writeText(url)
+      alert("Share URL copied")
+    } catch {
+      alert(url)
+    }
   }
 
   function MetricLine({
@@ -411,6 +464,26 @@ export default function Home() {
             />
           ))}
         </div>
+      </div>
+
+      <div className="mt-6 flex justify-center">
+        <button
+          onClick={copyShareUrl}
+          className="
+            w-full sm:w-auto
+            text-center
+            border border-black
+            text-black
+            px-8 sm:px-10
+            py-3
+            rounded-xl
+            text-sm sm:text-base
+            hover:bg-black hover:text-white
+            transition
+          "
+        >
+          Copy Share URL
+        </button>
       </div>
 
       <div className="mt-12 sm:mt-20 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-10 sm:gap-12 text-sm">
