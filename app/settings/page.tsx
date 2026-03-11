@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 
 type RatioBase = {
@@ -74,6 +74,9 @@ export default function Settings() {
     return Math.max(0, 100 - sum)
   }
 
+  const weekdaySleep = useMemo(() => calcSleep(weekdays), [weekdays])
+  const holidaySleep = useMemo(() => calcSleep(holidays), [holidays])
+
   function slider(
     title: string,
     key: keyof RatioBase,
@@ -84,17 +87,21 @@ export default function Settings() {
     const hours = (24 * percent / 100).toFixed(1)
 
     return (
-      <div className="mb-10">
-        <div className="text-xs text-gray-500 mb-1">
-          {title}
-        </div>
+      <div className="mb-8 sm:mb-10">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <div className="text-xs text-gray-500 mb-1">
+              {title}
+            </div>
 
-        <div className="text-xs text-gray-500">
-          {percent}%
-        </div>
+            <div className="text-xs text-gray-500">
+              {percent}%
+            </div>
 
-        <div className="text-base">
-          {hours}h / day
+            <div className="text-sm sm:text-base break-words">
+              {hours}h / day
+            </div>
+          </div>
         </div>
 
         <input
@@ -122,7 +129,7 @@ export default function Settings() {
 
             set(newData)
           }}
-          className="w-full"
+          className="w-full mt-3"
         />
       </div>
     )
@@ -133,7 +140,7 @@ export default function Settings() {
     const hours = (24 * percent / 100).toFixed(1)
 
     return (
-      <div className="mb-10 opacity-60">
+      <div className="mb-8 sm:mb-10 opacity-60">
         <div className="text-sm font-medium mb-1">
           Sleep
         </div>
@@ -142,7 +149,7 @@ export default function Settings() {
           {percent}%
         </div>
 
-        <div className="text-xs text-gray-500 mb-3">
+        <div className="text-xs text-gray-500">
           {hours}h / day
         </div>
 
@@ -152,26 +159,23 @@ export default function Settings() {
           max="100"
           value={percent}
           disabled
-          className="w-full"
+          className="w-full mt-3"
         />
       </div>
     )
   }
 
   function save() {
-    const weekdaysSleep = calcSleep(weekdays)
-    const holidaysSleep = calcSleep(holidays)
-
     localStorage.setItem(
       "ratio",
       JSON.stringify({
         weekdays: {
           ...weekdays,
-          sleep: weekdaysSleep,
+          sleep: weekdaySleep,
         },
         holidays: {
           ...holidays,
-          sleep: holidaysSleep,
+          sleep: holidaySleep,
         },
       })
     )
@@ -180,41 +184,65 @@ export default function Settings() {
   }
 
   return (
-    <main className="max-w-xl mx-auto px-10 py-16">
-      <h1 className="text-3xl font-bold mb-14">
+    <main className="max-w-xl mx-auto px-5 py-8 sm:px-10 sm:py-16">
+      <h1 className="text-2xl sm:text-3xl font-bold mb-10 sm:mb-14 leading-tight">
         Edit Time Ratio
       </h1>
 
-      <h2 className="text-xl mb-8 text-gray-500">
-        Weekdays
-      </h2>
+      <section className="mb-12 sm:mb-16">
+        <h2 className="text-lg sm:text-xl mb-2 text-gray-500">
+          Weekdays
+        </h2>
 
-      {slider("Commission", "commission", weekdays, setWeekdays)}
-      {slider("Creation", "creation", weekdays, setWeekdays)}
-      {slider("Research", "research", weekdays, setWeekdays)}
-      {slider("Life", "life", weekdays, setWeekdays)}
-      {sleepSlider(weekdays)}
+        <p className="text-sm text-gray-500 mb-6 sm:mb-8 leading-6">
+          Monday to Friday, excluding Japanese public holidays.
+        </p>
 
-      <h2 className="text-xl mt-16 mb-8 text-gray-500">
-        Holidays
-      </h2>
+        {slider("Commission", "commission", weekdays, setWeekdays)}
+        {slider("Creation", "creation", weekdays, setWeekdays)}
+        {slider("Research", "research", weekdays, setWeekdays)}
+        {slider("Life", "life", weekdays, setWeekdays)}
+        {sleepSlider(weekdays)}
+      </section>
 
-      {slider("Commission", "commission", holidays, setHolidays)}
-      {slider("Creation", "creation", holidays, setHolidays)}
-      {slider("Research", "research", holidays, setHolidays)}
-      {slider("Life", "life", holidays, setHolidays)}
-      {sleepSlider(holidays)}
+      <section>
+        <h2 className="text-lg sm:text-xl mb-2 text-gray-500">
+          Holidays
+        </h2>
+
+        <p className="text-sm text-gray-500 mb-6 sm:mb-8 leading-6">
+          Saturdays, Sundays, and Japanese public holidays.
+        </p>
+
+        {slider("Commission", "commission", holidays, setHolidays)}
+        {slider("Creation", "creation", holidays, setHolidays)}
+        {slider("Research", "research", holidays, setHolidays)}
+        {slider("Life", "life", holidays, setHolidays)}
+        {sleepSlider(holidays)}
+      </section>
+
+      <div className="mt-10 sm:mt-14 rounded-2xl border border-gray-200 p-4 sm:p-5 text-sm text-gray-600 leading-6">
+        <div className="mb-2 font-medium text-black">
+          How this is used on the dashboard
+        </div>
+        <div>
+          W = remaining / total time on weekdays
+        </div>
+        <div>
+          H = remaining / total time on holidays
+        </div>
+      </div>
 
       <button
         onClick={save}
         className="
-          mt-20
+          mt-12 sm:mt-20
           w-full
           bg-black
           text-white
           py-4
           rounded-xl
-          text-lg
+          text-base sm:text-lg
           hover:opacity-80
           transition
         "

@@ -309,57 +309,90 @@ export default function Home() {
     return `${(hoursValue / YEAR_HOURS) * 100}%`
   }
 
+  function MetricLine({
+    label,
+    remainHours,
+    totalHours,
+    showDays = true,
+  }: {
+    label: string
+    remainHours: number
+    totalHours: number
+    showDays?: boolean
+  }) {
+    return (
+      <div className="break-words">
+        <span className="inline-block min-w-[1.6rem]">{label} :</span>{" "}
+        {Math.round(remainHours)}h
+        {showDays ? `(${hoursToDays(remainHours)}d)` : ""}
+        /
+        {Math.round(totalHours)}h
+        {showDays ? `(${hoursToDays(totalHours)}d)` : ""}
+      </div>
+    )
+  }
+
   function block(
     title: string,
     color: string,
     data: ItemMetrics
   ) {
     return (
-      <div>
+      <div className="min-w-0">
         <div className="flex items-center gap-2">
-          <div style={{ width: 12, height: 12, background: color }} />
-          <div className="text-gray-600">{title}</div>
+          <div
+            className="shrink-0"
+            style={{ width: 12, height: 12, background: color }}
+          />
+          <div className="text-gray-600 text-base sm:text-lg">{title}</div>
         </div>
 
-        <div className="mt-2 font-mono text-sm">
-          <div>
-            Y : {Math.round(data.yearRemainHours)}h({hoursToDays(data.yearRemainHours)}d)/{Math.round(data.yearTotalHours)}h({hoursToDays(data.yearTotalHours)}d)
-          </div>
-
-          <div>
-            M : {Math.round(data.monthRemainHours)}h({hoursToDays(data.monthRemainHours)}d)/{Math.round(data.monthTotalHours)}h({hoursToDays(data.monthTotalHours)}d)
-          </div>
-
-          <div>
-            D : {Math.floor(data.dayRemainHours)}h/{Math.round(data.dayTotalHours)}h
-          </div>
-
-          <div>
-            W : {Math.round(data.weekdayRemainHours)}h({hoursToDays(data.weekdayRemainHours)}d)/{Math.round(data.weekdayTotalHours)}h({hoursToDays(data.weekdayTotalHours)}d)
-          </div>
-
-          <div>
-            H : {Math.round(data.holidayRemainHours)}h({hoursToDays(data.holidayRemainHours)}d)/{Math.round(data.holidayTotalHours)}h({hoursToDays(data.holidayTotalHours)}d)
-          </div>
+        <div className="mt-3 font-mono text-xs sm:text-sm leading-7 sm:leading-8 break-words">
+          <MetricLine
+            label="Y"
+            remainHours={data.yearRemainHours}
+            totalHours={data.yearTotalHours}
+          />
+          <MetricLine
+            label="M"
+            remainHours={data.monthRemainHours}
+            totalHours={data.monthTotalHours}
+          />
+          <MetricLine
+            label="D"
+            remainHours={data.dayRemainHours}
+            totalHours={data.dayTotalHours}
+            showDays={false}
+          />
+          <MetricLine
+            label="W"
+            remainHours={data.weekdayRemainHours}
+            totalHours={data.weekdayTotalHours}
+          />
+          <MetricLine
+            label="H"
+            remainHours={data.holidayRemainHours}
+            totalHours={data.holidayTotalHours}
+          />
         </div>
       </div>
     )
   }
 
   return (
-    <main className="max-w-4xl mx-auto px-10 py-16">
-      <h1 className="text-4xl font-bold">
+    <main className="max-w-4xl mx-auto px-5 py-8 sm:px-10 sm:py-16">
+      <h1 className="text-2xl sm:text-4xl font-bold leading-tight break-words">
         {formatCurrentTime(now)}
       </h1>
 
-      <div className="mt-16">
-        <div className="text-6xl font-bold mt-2">
+      <div className="mt-10 sm:mt-16">
+        <div className="text-5xl sm:text-6xl font-bold leading-none break-words">
           {hours(remaining)}h {minutes(remaining)}m {seconds(remaining)}s
         </div>
       </div>
 
-      <div className="mt-16">
-        <div className="w-full h-14 rounded-xl overflow-hidden flex bg-gray-100">
+      <div className="mt-10 sm:mt-16">
+        <div className="w-full h-10 sm:h-14 rounded-2xl overflow-hidden flex bg-gray-100">
           {segments.map((segment) => (
             <div
               key={segment.key}
@@ -372,7 +405,7 @@ export default function Home() {
         </div>
       </div>
 
-      <div className="mt-20 grid grid-cols-3 gap-12 text-sm">
+      <div className="mt-12 sm:mt-20 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-10 sm:gap-12 text-sm">
         {block("Total", "#000", metrics.total)}
         {block("Commission", "#3B82F6", metrics.commission)}
         {block("Creation", "#9333EA", metrics.creation)}
@@ -381,16 +414,18 @@ export default function Home() {
         {block("Sleep", "#EF4444", metrics.sleep)}
       </div>
 
-      <div className="mt-24 flex justify-center">
+      <div className="mt-16 sm:mt-24 flex justify-center">
         <Link
           href="/settings"
           className="
+            w-full sm:w-auto
+            text-center
             bg-black
             text-white
-            px-10
+            px-8 sm:px-10
             py-4
             rounded-xl
-            text-lg
+            text-base sm:text-lg
             hover:opacity-80
             transition
           "
