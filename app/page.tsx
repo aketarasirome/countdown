@@ -30,10 +30,27 @@ type ItemMetrics = {
   holidayTotalHours: number
 }
 
+const defaultRatio: Ratio = {
+  weekdays: {
+    commission: 40,
+    creation: 20,
+    research: 10,
+    life: 10,
+    sleep: 20,
+  },
+  holidays: {
+    commission: 10,
+    creation: 40,
+    research: 10,
+    life: 20,
+    sleep: 20,
+  },
+}
+
 export default function Home() {
   const YEAR_HOURS = 365 * 24
 
-  const [ratio, setRatio] = useState<Ratio | null>(null)
+  const [ratio, setRatio] = useState<Ratio>(defaultRatio)
   const [now, setNow] = useState(new Date())
 
   const hd = useMemo(() => new Holidays("JP"), [])
@@ -47,7 +64,11 @@ export default function Home() {
   useEffect(() => {
     const saved = localStorage.getItem("ratio")
     if (saved) {
-      setRatio(JSON.parse(saved))
+      try {
+        setRatio(JSON.parse(saved))
+      } catch (error) {
+        console.error("Failed to parse saved ratio:", error)
+      }
     }
   }, [])
 
@@ -88,8 +109,6 @@ export default function Home() {
   const remainingHours = hours(remaining)
 
   const calendarCounts = useMemo(() => {
-    if (!ratio) return null
-
     const startOfYear = new Date(now.getFullYear(), 0, 1)
     const endOfYear = new Date(now.getFullYear(), 11, 31)
 
@@ -170,13 +189,9 @@ export default function Home() {
       weekdayRemainDaysMonth,
       holidayRemainDaysMonth,
     }
-  }, [ratio, hd, now.getFullYear(), now.getMonth(), now.getDate()])
+  }, [hd, now.getFullYear(), now.getMonth(), now.getDate()])
 
   const metrics = useMemo(() => {
-    if (!ratio || !calendarCounts) return null
-
-    const counts = calendarCounts
-
     const currentDayRemainingHours =
       24 - now.getHours() - now.getMinutes() / 60 - now.getSeconds() / 3600
 
@@ -187,23 +202,23 @@ export default function Home() {
       holidayPercent: number
     ): ItemMetrics {
       const yearTotalHours =
-        counts.weekdayTotalDaysYear * 24 * (weekdayPercent / 100) +
-        counts.holidayTotalDaysYear * 24 * (holidayPercent / 100)
+        calendarCounts.weekdayTotalDaysYear * 24 * (weekdayPercent / 100) +
+        calendarCounts.holidayTotalDaysYear * 24 * (holidayPercent / 100)
 
       const yearRemainHours =
-        counts.weekdayRemainDaysYear * 24 * (weekdayPercent / 100) +
-        counts.holidayRemainDaysYear * 24 * (holidayPercent / 100) +
+        calendarCounts.weekdayRemainDaysYear * 24 * (weekdayPercent / 100) +
+        calendarCounts.holidayRemainDaysYear * 24 * (holidayPercent / 100) +
         currentDayRemainingHours *
           ((currentDayType === "weekdays" ? weekdayPercent : holidayPercent) /
             100)
 
       const monthTotalHours =
-        counts.weekdayTotalDaysMonth * 24 * (weekdayPercent / 100) +
-        counts.holidayTotalDaysMonth * 24 * (holidayPercent / 100)
+        calendarCounts.weekdayTotalDaysMonth * 24 * (weekdayPercent / 100) +
+        calendarCounts.holidayTotalDaysMonth * 24 * (holidayPercent / 100)
 
       const monthRemainHours =
-        counts.weekdayRemainDaysMonth * 24 * (weekdayPercent / 100) +
-        counts.holidayRemainDaysMonth * 24 * (holidayPercent / 100) +
+        calendarCounts.weekdayRemainDaysMonth * 24 * (weekdayPercent / 100) +
+        calendarCounts.holidayRemainDaysMonth * 24 * (holidayPercent / 100) +
         currentDayRemainingHours *
           ((currentDayType === "weekdays" ? weekdayPercent : holidayPercent) /
             100)
@@ -217,19 +232,19 @@ export default function Home() {
         ((currentDayType === "weekdays" ? weekdayPercent : holidayPercent) / 100)
 
       const weekdayTotalHours =
-        counts.weekdayTotalDaysYear * 24 * (weekdayPercent / 100)
+        calendarCounts.weekdayTotalDaysYear * 24 * (weekdayPercent / 100)
 
       const weekdayRemainHours =
-        counts.weekdayRemainDaysYear * 24 * (weekdayPercent / 100) +
+        calendarCounts.weekdayRemainDaysYear * 24 * (weekdayPercent / 100) +
         (currentDayType === "weekdays"
           ? currentDayRemainingHours * (weekdayPercent / 100)
           : 0)
 
       const holidayTotalHours =
-        counts.holidayTotalDaysYear * 24 * (holidayPercent / 100)
+        calendarCounts.holidayTotalDaysYear * 24 * (holidayPercent / 100)
 
       const holidayRemainHours =
-        counts.holidayRemainDaysYear * 24 * (holidayPercent / 100) +
+        calendarCounts.holidayRemainDaysYear * 24 * (holidayPercent / 100) +
         (currentDayType === "holidays"
           ? currentDayRemainingHours * (holidayPercent / 100)
           : 0)
@@ -278,10 +293,6 @@ export default function Home() {
     now.getMinutes(),
     now.getSeconds(),
   ])
-
-  if (!ratio || !metrics) {
-    return null
-  }
 
   const elapsedHours = YEAR_HOURS - remainingHours
 
