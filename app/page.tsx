@@ -324,10 +324,18 @@ export default function Home() {
       <div className="break-words">
         <span className="inline-block min-w-[1.6rem]">{label} :</span>{" "}
         {Math.round(remainHours)}h
-        {showDays ? `(${hoursToDays(remainHours)}d)` : ""}
+        {showDays && (
+          <span className="text-gray-400 ml-0.5">
+            ({hoursToDays(remainHours)}d)
+          </span>
+        )}
         /
         {Math.round(totalHours)}h
-        {showDays ? `(${hoursToDays(totalHours)}d)` : ""}
+        {showDays && (
+          <span className="text-gray-400 ml-0.5">
+            ({hoursToDays(totalHours)}d)
+          </span>
+        )}
       </div>
     )
   }
