@@ -347,7 +347,7 @@ export default function Home() {
           <div className="text-gray-600 text-base sm:text-lg">{title}</div>
         </div>
 
-        <div className="mt-3 font-mono text-xs sm:text-sm leading-7 sm:leading-8 break-words">
+        <div className="mt-3 text-xs sm:text-sm leading-7 sm:leading-8 break-words">
           <MetricLine
             label="Y"
             remainHours={data.yearRemainHours}
@@ -380,7 +380,7 @@ export default function Home() {
   }
 
   return (
-    <main className="max-w-4xl mx-auto px-5 py-8 sm:px-10 sm:py-16">
+    <main className="font-sans max-w-4xl mx-auto px-5 py-8 sm:px-10 sm:py-16">
       <h1 className="text-2xl sm:text-4xl font-bold leading-tight break-words">
         {formatCurrentTime(now)}
       </h1>
