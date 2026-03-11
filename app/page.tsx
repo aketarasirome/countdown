@@ -333,32 +333,41 @@ export default function Home() {
   }
 
   function shareUrl() {
-    if (typeof window === "undefined") return ""
-
     const wd = [
       ratio.weekdays.commission,
       ratio.weekdays.creation,
       ratio.weekdays.research,
       ratio.weekdays.life,
     ].join(",")
-
+  
     const hdValues = [
       ratio.holidays.commission,
       ratio.holidays.creation,
       ratio.holidays.research,
       ratio.holidays.life,
     ].join(",")
-
-    return `${window.location.origin}/?wd=${wd}&hd=${hdValues}`
+  
+    if (typeof window === "undefined") {
+      return `/?wd=${wd}&hd=${hdValues}`
+    }
+  
+    return `${window.location.origin}?wd=${wd}&hd=${hdValues}`
   }
-
+  
   async function copyShareUrl() {
     const url = shareUrl()
+  
     try {
-      await navigator.clipboard.writeText(url)
-      alert("Share URL copied")
-    } catch {
-      alert(url)
+      if (typeof navigator !== "undefined" && navigator.clipboard) {
+        await navigator.clipboard.writeText(url)
+        window.alert("Share URL copied")
+        return
+      }
+  
+      window.alert(url)
+    } catch (error) {
+      console.error("Failed to copy share URL:", error)
+      window.alert(url)
     }
   }
 
