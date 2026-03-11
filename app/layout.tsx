@@ -32,3 +32,19 @@ export default function RootLayout({
     </html>
   );
 }
+import type { Metadata } from "next"
+
+export const metadata: Metadata = {
+  metadataBase: new URL("https://countdown-00-git-main-aketarasiromes-projects.vercel.app"),
+  title: "Countdown",
+  description: "Time budgeting dashboard",
+  openGraph: {
+    title: "Countdown",
+    description: "Time budgeting dashboard",
+    images: ["/ogp.png"],
+  },
+  twitter: {
+    card: "summary_large_image",
+    images: ["/ogp.png"],
+  },
+}
