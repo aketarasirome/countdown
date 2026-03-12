@@ -475,25 +475,7 @@ export default function Home() {
         </div>
       </div>
 
-      <div className="mt-6 flex justify-center">
-        <button
-          onClick={copyShareUrl}
-          className="
-            w-full sm:w-auto
-            text-center
-            border border-black
-            text-black
-            px-8 sm:px-10
-            py-3
-            rounded-xl
-            text-sm sm:text-base
-            hover:bg-black hover:text-white
-            transition
-          "
-        >
-          Copy Share URL
-        </button>
-      </div>
+      
 
       <div className="mt-12 sm:mt-20 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-10 sm:gap-12 text-sm">
         {block("Total", "#000", metrics.total)}
@@ -523,6 +505,27 @@ export default function Home() {
           Edit Ratio
         </Link>
       </div>
+
+      <div className="mt-6 flex justify-center">
+        <button
+          onClick={copyShareUrl}
+          className="
+            w-full sm:w-auto
+            text-center
+            border border-black
+            text-black
+            px-8 sm:px-10
+            py-3
+            rounded-xl
+            text-sm sm:text-base
+            hover:bg-black hover:text-white
+            transition
+          "
+        >
+          Copy Share URL
+        </button>
+      </div>
+      
     </main>
   )
 }
