@@ -103,7 +103,7 @@ export async function GET(request: Request) {
             marginBottom: 56,
           }}
         >
-          {remainTime.h}h {remainTime.m}m {remainTime.s}s
+          TEST{remainTime.h}h {remainTime.m}m {remainTime.s}s
         </div>
 
         <div
