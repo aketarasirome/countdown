@@ -29,6 +29,22 @@ const defaultHolidays: RatioBase = {
   life: 20,
 }
 
+function parseRatioBaseFromQuery(value: string | null): RatioBase | null {
+  if (!value) return null
+
+  const parts = value.split(",").map((v) => Number(v))
+  if (parts.length !== 4 || parts.some((n) => Number.isNaN(n))) {
+    return null
+  }
+
+  const [commission, creation, research, life] = parts
+  const sum = commission + creation + research + life
+
+  if (sum > 100) return null
+
+  return { commission, creation, research, life }
+}
+
 export default function Settings() {
   const router = useRouter()
 
@@ -36,6 +52,17 @@ export default function Settings() {
   const [holidays, setHolidays] = useState<RatioBase>(defaultHolidays)
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+
+    const wdFromUrl = parseRatioBaseFromQuery(params.get("wd"))
+    const hdFromUrl = parseRatioBaseFromQuery(params.get("hd"))
+
+    if (wdFromUrl && hdFromUrl) {
+      setWeekdays(wdFromUrl)
+      setHolidays(hdFromUrl)
+      return
+    }
+
     const saved = localStorage.getItem("ratio")
     if (!saved) return
 
@@ -123,9 +150,7 @@ export default function Settings() {
               newData.research +
               newData.life
 
-            if (sum > 100) {
-              return
-            }
+            if (sum > 100) return
 
             set(newData)
           }}
@@ -166,21 +191,34 @@ export default function Settings() {
   }
 
   function save() {
-    localStorage.setItem(
-      "ratio",
-      JSON.stringify({
-        weekdays: {
-          ...weekdays,
-          sleep: weekdaySleep,
-        },
-        holidays: {
-          ...holidays,
-          sleep: holidaySleep,
-        },
-      })
-    )
+    const payload = {
+      weekdays: {
+        ...weekdays,
+        sleep: weekdaySleep,
+      },
+      holidays: {
+        ...holidays,
+        sleep: holidaySleep,
+      },
+    }
 
-    router.push("/")
+    localStorage.setItem("ratio", JSON.stringify(payload))
+
+    const wd = [
+      weekdays.commission,
+      weekdays.creation,
+      weekdays.research,
+      weekdays.life,
+    ].join(",")
+
+    const hd = [
+      holidays.commission,
+      holidays.creation,
+      holidays.research,
+      holidays.life,
+    ].join(",")
+
+    router.push(`/?wd=${wd}&hd=${hd}`)
   }
 
   return (
