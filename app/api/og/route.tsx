@@ -54,8 +54,11 @@ export async function GET(request: Request) {
     365 * 24 - (commission + creation + research + life + sleep)
   )
 
+  const totalHours = 365 * 24
   const totalWidth = 1060
-  const widthFor = (hours: number) => `${(hours / (365 * 24)) * totalWidth}px`
+
+  const widthFor = (hours: number) =>
+    Math.max(0, Math.round((hours / totalHours) * totalWidth))
 
   return new ImageResponse(
     (
@@ -63,17 +66,17 @@ export async function GET(request: Request) {
         style={{
           width: "1200px",
           height: "630px",
-          background: "#f3f3f1",
           display: "flex",
           flexDirection: "column",
+          backgroundColor: "#f3f3f1",
           padding: "64px 68px",
-          fontFamily: "Arial, sans-serif",
           color: "#111111",
         }}
       >
         <div
           style={{
-            fontSize: 46,
+            display: "flex",
+            fontSize: 44,
             fontWeight: 700,
             lineHeight: 1.1,
             marginBottom: 56,
@@ -84,6 +87,7 @@ export async function GET(request: Request) {
 
         <div
           style={{
+            display: "flex",
             fontSize: 82,
             fontWeight: 700,
             lineHeight: 1,
@@ -95,55 +99,103 @@ export async function GET(request: Request) {
 
         <div
           style={{
+            display: "flex",
             width: `${totalWidth}px`,
             height: "72px",
-            borderRadius: "22px",
             overflow: "hidden",
-            display: "flex",
-            background: "#e5e5e5",
+            borderRadius: "22px",
+            backgroundColor: "#e5e5e5",
             marginBottom: 56,
           }}
         >
-          <div style={{ width: widthFor(elapsed), background: "#000000" }} />
-          <div style={{ width: widthFor(commission), background: "#3B82F6" }} />
-          <div style={{ width: widthFor(creation), background: "#9333EA" }} />
-          <div style={{ width: widthFor(research), background: "#F59E0B" }} />
-          <div style={{ width: widthFor(life), background: "#10B981" }} />
-          <div style={{ width: widthFor(sleep), background: "#EF4444" }} />
+          <div
+            style={{
+              display: "flex",
+              width: `${widthFor(elapsed)}px`,
+              height: "72px",
+              backgroundColor: "#000000",
+            }}
+          />
+          <div
+            style={{
+              display: "flex",
+              width: `${widthFor(commission)}px`,
+              height: "72px",
+              backgroundColor: "#3B82F6",
+            }}
+          />
+          <div
+            style={{
+              display: "flex",
+              width: `${widthFor(creation)}px`,
+              height: "72px",
+              backgroundColor: "#9333EA",
+            }}
+          />
+          <div
+            style={{
+              display: "flex",
+              width: `${widthFor(research)}px`,
+              height: "72px",
+              backgroundColor: "#F59E0B",
+            }}
+          />
+          <div
+            style={{
+              display: "flex",
+              width: `${widthFor(life)}px`,
+              height: "72px",
+              backgroundColor: "#10B981",
+            }}
+          />
+          <div
+            style={{
+              display: "flex",
+              width: `${widthFor(sleep)}px`,
+              height: "72px",
+              backgroundColor: "#EF4444",
+            }}
+          />
         </div>
 
         <div
           style={{
             display: "flex",
-            gap: "36px",
-            fontSize: 30,
+            flexDirection: "row",
+            flexWrap: "wrap",
+            gap: "22px",
             color: "#5c5c5c",
+            fontSize: 28,
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <div style={{ width: 18, height: 18, background: "#000000" }} />
-            <div>Total</div>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <div style={{ width: 18, height: 18, background: "#3B82F6" }} />
-            <div>Commission</div>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <div style={{ width: 18, height: 18, background: "#9333EA" }} />
-            <div>Creation</div>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <div style={{ width: 18, height: 18, background: "#F59E0B" }} />
-            <div>Research</div>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <div style={{ width: 18, height: 18, background: "#10B981" }} />
-            <div>Life</div>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <div style={{ width: 18, height: 18, background: "#EF4444" }} />
-            <div>Sleep</div>
-          </div>
+          {[
+            ["#000000", "Total"],
+            ["#3B82F6", "Commission"],
+            ["#9333EA", "Creation"],
+            ["#F59E0B", "Research"],
+            ["#10B981", "Life"],
+            ["#EF4444", "Sleep"],
+          ].map(([color, label]) => (
+            <div
+              key={label}
+              style={{
+                display: "flex",
+                flexDirection: "row",
+                alignItems: "center",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  width: "18px",
+                  height: "18px",
+                  backgroundColor: color,
+                  marginRight: "10px",
+                }}
+              />
+              <div style={{ display: "flex" }}>{label}</div>
+            </div>
+          ))}
         </div>
       </div>
     ),
