@@ -25,11 +25,19 @@ function formatSharedAt(value: string | null) {
   return `${date.getFullYear()}.${date.getMonth() + 1}.${date.getDate()} ${date.getHours()}h ${date.getMinutes()}m ${date.getSeconds()}s`
 }
 
-function remainingHoursAt(sharedAt: string | null) {
+function remainingTimeAt(sharedAt: string | null) {
   const now = sharedAt ? new Date(sharedAt) : new Date()
-  if (Number.isNaN(now.getTime())) return 0
+  if (Number.isNaN(now.getTime())) return { h: 0, m: 0, s: 0 }
+
   const end = new Date(now.getFullYear(), 11, 31, 23, 59, 59)
-  return Math.max(0, Math.floor((end.getTime() - now.getTime()) / 1000 / 60 / 60))
+
+  const diff = Math.max(0, end.getTime() - now.getTime())
+
+  const h = Math.floor(diff / 1000 / 60 / 60)
+  const m = Math.floor((diff / 1000 / 60) % 60)
+  const s = Math.floor((diff / 1000) % 60)
+
+  return { h, m, s }
 }
 
 export async function GET(request: Request) {
@@ -42,7 +50,8 @@ export async function GET(request: Request) {
   const sharedAt = searchParams.get("sharedAt")
 
   const titleTime = formatSharedAt(sharedAt)
-  const remain = remainingHoursAt(sharedAt)
+  const remainTime = remainingTimeAt(sharedAt)
+  const remain = remainTime.h
 
   const commission = Math.round(remain * (weekdays.commission / 100))
   const creation = Math.round(remain * (weekdays.creation / 100))
@@ -94,7 +103,7 @@ export async function GET(request: Request) {
             marginBottom: 56,
           }}
         >
-          {remain}h
+          {remainTime.h}h {remainTime.m}m {remainTime.s}s
         </div>
 
         <div
