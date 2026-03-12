@@ -250,7 +250,8 @@ export default function Home() {
         calendarCounts.weekdayRemainDaysYear * 24 * (weekdayPercent / 100) +
         calendarCounts.holidayRemainDaysYear * 24 * (holidayPercent / 100) +
         currentDayRemainingHours *
-          ((currentDayType === "weekdays" ? weekdayPercent : holidayPercent) / 100)
+          ((currentDayType === "weekdays" ? weekdayPercent : holidayPercent) /
+            100)
 
       const monthTotalHours =
         calendarCounts.weekdayTotalDaysMonth * 24 * (weekdayPercent / 100) +
@@ -260,10 +261,12 @@ export default function Home() {
         calendarCounts.weekdayRemainDaysMonth * 24 * (weekdayPercent / 100) +
         calendarCounts.holidayRemainDaysMonth * 24 * (holidayPercent / 100) +
         currentDayRemainingHours *
-          ((currentDayType === "weekdays" ? weekdayPercent : holidayPercent) / 100)
+          ((currentDayType === "weekdays" ? weekdayPercent : holidayPercent) /
+            100)
 
       const dayTotalHours =
-        24 * ((currentDayType === "weekdays" ? weekdayPercent : holidayPercent) / 100)
+        24 *
+        ((currentDayType === "weekdays" ? weekdayPercent : holidayPercent) / 100)
 
       const dayRemainHours =
         currentDayRemainingHours *
@@ -303,11 +306,26 @@ export default function Home() {
 
     return {
       total: calcItem(100, 100),
-      commission: calcItem(ratio.weekdays.commission, ratio.holidays.commission),
-      creation: calcItem(ratio.weekdays.creation, ratio.holidays.creation),
-      research: calcItem(ratio.weekdays.research, ratio.holidays.research),
-      life: calcItem(ratio.weekdays.life, ratio.holidays.life),
-      sleep: calcItem(ratio.weekdays.sleep, ratio.holidays.sleep),
+      commission: calcItem(
+        ratio.weekdays.commission,
+        ratio.holidays.commission
+      ),
+      creation: calcItem(
+        ratio.weekdays.creation,
+        ratio.holidays.creation
+      ),
+      research: calcItem(
+        ratio.weekdays.research,
+        ratio.holidays.research
+      ),
+      life: calcItem(
+        ratio.weekdays.life,
+        ratio.holidays.life
+      ),
+      sleep: calcItem(
+        ratio.weekdays.sleep,
+        ratio.holidays.sleep
+      ),
     }
   }, [
     ratio,
@@ -339,36 +357,55 @@ export default function Home() {
       ratio.weekdays.research,
       ratio.weekdays.life,
     ].join(",")
-  
+
     const hdValues = [
       ratio.holidays.commission,
       ratio.holidays.creation,
       ratio.holidays.research,
       ratio.holidays.life,
     ].join(",")
-  
+
     if (typeof window === "undefined") {
       return `/?wd=${wd}&hd=${hdValues}`
     }
-  
+
     return `${window.location.origin}?wd=${wd}&hd=${hdValues}`
   }
-  
+
   async function copyShareUrl() {
     const url = shareUrl()
-  
+
     try {
       if (typeof navigator !== "undefined" && navigator.clipboard) {
         await navigator.clipboard.writeText(url)
         window.alert("Share URL copied")
         return
       }
-  
+
       window.alert(url)
     } catch (error) {
       console.error("Failed to copy share URL:", error)
       window.alert(url)
     }
+  }
+
+  function ShareIcon() {
+    return (
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 24 24"
+        className="h-5 w-5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M12 16V4" />
+        <path d="M8 8l4-4 4 4" />
+        <path d="M4 14v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4" />
+      </svg>
+    )
   }
 
   function MetricLine({
@@ -451,6 +488,27 @@ export default function Home() {
 
   return (
     <main className="font-sans max-w-4xl mx-auto px-5 py-8 sm:px-10 sm:py-16">
+      <button
+        onClick={copyShareUrl}
+        aria-label="Copy share URL"
+        className="
+          fixed top-4 right-4 sm:top-5 sm:right-5 z-50
+          h-11 w-11 sm:h-12 sm:w-12
+          rounded-full
+          border border-black/10
+          bg-white/85
+          text-black
+          shadow-[0_8px_30px_rgba(0,0,0,0.08)]
+          backdrop-blur-md
+          flex items-center justify-center
+          hover:bg-white
+          active:scale-95
+          transition
+        "
+      >
+        <ShareIcon />
+      </button>
+
       <h1 className="text-2xl sm:text-4xl font-bold leading-tight break-words">
         {formatCurrentTime(now)}
       </h1>
@@ -474,8 +532,6 @@ export default function Home() {
           ))}
         </div>
       </div>
-
-      
 
       <div className="mt-12 sm:mt-20 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-10 sm:gap-12 text-sm">
         {block("Total", "#000", metrics.total)}
@@ -505,27 +561,6 @@ export default function Home() {
           Edit Ratio
         </Link>
       </div>
-
-      <div className="mt-6 flex justify-center">
-        <button
-          onClick={copyShareUrl}
-          className="
-            w-full sm:w-auto
-            text-center
-            border border-black
-            text-black
-            px-8 sm:px-10
-            py-3
-            rounded-xl
-            text-sm sm:text-base
-            hover:bg-black hover:text-white
-            transition
-          "
-        >
-          Copy Share URL
-        </button>
-      </div>
-      
     </main>
   )
 }
