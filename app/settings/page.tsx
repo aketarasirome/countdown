@@ -148,19 +148,8 @@ export default function Settings() {
           howUsed: "How this is used on the dashboard",
           howUsed1: "W = 平日の残り時間 / 合計時間",
           howUsed2: "H = 土日祝の残り時間 / 合計時間",
-          weekdaysText: "平日",
-          holidaysText: "土日祝",
-          remainingText: "のこり時間",
-          hoursPerDay: "時間",
-          daySuffix: "日",
-          copied: "コピーしました",
           resetLabel: "初期値に戻す",
           langLabel: "日本語 / English",
-          commissionShort: "仕事",
-          creationShort: "制作",
-          researchShort: "勉強",
-          lifeShort: "家事育児",
-          holidayLifeShort: "家事",
         }
       : {
           title: "Edit Time Ratio",
@@ -177,19 +166,8 @@ export default function Settings() {
           howUsed: "How this is used on the dashboard",
           howUsed1: "W = remaining / total time on weekdays",
           howUsed2: "H = remaining / total time on holidays",
-          weekdaysText: "Weekdays",
-          holidaysText: "Weekends & holidays",
-          remainingText: "Remaining time",
-          hoursPerDay: "hours",
-          daySuffix: "days",
-          copied: "Copied",
           resetLabel: "Reset to default",
           langLabel: "日本語 / English",
-          commissionShort: "Commission",
-          creationShort: "Creation",
-          researchShort: "Research",
-          lifeShort: "Life",
-          holidayLifeShort: "Life",
         }
 
   function slider(
@@ -278,13 +256,7 @@ export default function Settings() {
     )
   }
 
-  function remainingMs() {
-    const end = new Date(now.getFullYear(), 11, 31, 23, 59, 59)
-    return Math.max(0, end.getTime() - now.getTime())
-  }
-
   const calendarCounts = useMemo(() => {
-    const startOfYear = new Date(now.getFullYear(), 0, 1)
     const endOfYear = new Date(now.getFullYear(), 11, 31)
 
     const tomorrow = new Date(
@@ -373,7 +345,12 @@ export default function Settings() {
     calendarCounts,
   ])
 
-  function jpHoursLine(prefix: string, data: RatioBase, sleep: number, lifeLabel: string) {
+  function jpHoursLine(
+    prefix: string,
+    data: RatioBase,
+    sleep: number,
+    lifeLabel: string
+  ) {
     const commissionHours = Math.round((24 * data.commission) / 100)
     const creationHours = Math.round((24 * data.creation) / 100)
     const researchHours = Math.round((24 * data.research) / 100)
@@ -452,27 +429,6 @@ export default function Settings() {
     router.push(`/?wd=${wd}&hd=${hd}`)
   }
 
-  function LanguageIcon() {
-    return (
-      <svg
-        aria-hidden="true"
-        viewBox="0 0 24 24"
-        className="h-5 w-5"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d="M4 5h12" />
-        <path d="M10 5c0 7-2 11-6 14" />
-        <path d="M6 11c1.5 0 4.5.5 7 3" />
-        <path d="M14 15l3-8 3 8" />
-        <path d="M15 13h4" />
-      </svg>
-    )
-  }
-
   function RefreshIcon() {
     return (
       <svg
@@ -513,9 +469,10 @@ export default function Settings() {
             hover:bg-white
             active:scale-95
             transition
+            font-semibold text-sm
           "
         >
-          <LanguageIcon />
+          Aあ
         </button>
 
         <button
