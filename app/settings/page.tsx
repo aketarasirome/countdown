@@ -21,6 +21,14 @@ type ItemMetrics = {
   remainDays: number
 }
 
+type Snapshot = {
+  weekdays: RatioBase
+  holidays: RatioBase
+  weekdaySleep: number
+  holidaySleep: number
+  now: number
+}
+
 const defaultWeekdays: RatioBase = {
   commission: 40,
   creation: 20,
@@ -51,13 +59,109 @@ function parseRatioBaseFromQuery(value: string | null): RatioBase | null {
   return { commission, creation, research, life }
 }
 
+function calcSleep(data: RatioBase) {
+  const sum =
+    data.commission +
+    data.creation +
+    data.research +
+    data.life
+
+  return Math.max(0, 100 - sum)
+}
+
+function calcRemainDaysFromSnapshot(
+  snapshotNow: Date,
+  weekdays: RatioBase,
+  holidays: RatioBase,
+  weekdaySleep: number,
+  holidaySleep: number
+) {
+  const endOfYear = new Date(snapshotNow.getFullYear(), 11, 31)
+
+  const tomorrow = new Date(
+    snapshotNow.getFullYear(),
+    snapshotNow.getMonth(),
+    snapshotNow.getDate() + 1
+  )
+
+  const isHoliday = (date: Date) => {
+    const day = date.getDay()
+    return day === 0 || day === 6
+  }
+
+  let weekdayRemainDaysYear = 0
+  let holidayRemainDaysYear = 0
+
+  {
+    const cursor = new Date(tomorrow)
+    while (cursor <= endOfYear) {
+      if (isHoliday(cursor)) {
+        holidayRemainDaysYear++
+      } else {
+        weekdayRemainDaysYear++
+      }
+      cursor.setDate(cursor.getDate() + 1)
+    }
+  }
+
+  const currentDayRemainingHours =
+    24 -
+    snapshotNow.getHours() -
+    snapshotNow.getMinutes() / 60 -
+    snapshotNow.getSeconds() / 3600
+
+  const currentDayType =
+    snapshotNow.getDay() === 0 || snapshotNow.getDay() === 6
+      ? "holidays"
+      : "weekdays"
+
+  function calcRemainDays(
+    weekdayPercent: number,
+    holidayPercent: number
+  ): ItemMetrics {
+    const remainHours =
+      weekdayRemainDaysYear * 24 * (weekdayPercent / 100) +
+      holidayRemainDaysYear * 24 * (holidayPercent / 100) +
+      currentDayRemainingHours *
+        ((currentDayType === "weekdays" ? weekdayPercent : holidayPercent) /
+          100)
+
+    return {
+      remainDays: Math.round(remainHours / 24),
+    }
+  }
+
+  return {
+    commission: calcRemainDays(
+      weekdays.commission,
+      holidays.commission
+    ),
+    creation: calcRemainDays(
+      weekdays.creation,
+      holidays.creation
+    ),
+    research: calcRemainDays(
+      weekdays.research,
+      holidays.research
+    ),
+    life: calcRemainDays(
+      weekdays.life,
+      holidays.life
+    ),
+    sleep: calcRemainDays(
+      weekdaySleep,
+      holidaySleep
+    ),
+  }
+}
+
 export default function Settings() {
   const router = useRouter()
 
   const [weekdays, setWeekdays] = useState<RatioBase>(defaultWeekdays)
   const [holidays, setHolidays] = useState<RatioBase>(defaultHolidays)
   const [language, setLanguage] = useState<Language>("en")
-  const [now, setNow] = useState(new Date())
+  const [snapshot, setSnapshot] = useState<Snapshot | null>(null)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -68,34 +172,73 @@ export default function Settings() {
     if (wdFromUrl && hdFromUrl) {
       setWeekdays(wdFromUrl)
       setHolidays(hdFromUrl)
+      setSnapshot({
+        weekdays: wdFromUrl,
+        holidays: hdFromUrl,
+        weekdaySleep: calcSleep(wdFromUrl),
+        holidaySleep: calcSleep(hdFromUrl),
+        now: Date.now(),
+      })
       return
     }
 
     const saved = localStorage.getItem("ratio")
-    if (!saved) return
+    if (!saved) {
+      setSnapshot({
+        weekdays: defaultWeekdays,
+        holidays: defaultHolidays,
+        weekdaySleep: calcSleep(defaultWeekdays),
+        holidaySleep: calcSleep(defaultHolidays),
+        now: Date.now(),
+      })
+      return
+    }
 
     try {
       const parsed: SavedRatio = JSON.parse(saved)
 
-      if (parsed.weekdays) {
-        setWeekdays({
-          commission: parsed.weekdays.commission ?? defaultWeekdays.commission,
-          creation: parsed.weekdays.creation ?? defaultWeekdays.creation,
-          research: parsed.weekdays.research ?? defaultWeekdays.research,
-          life: parsed.weekdays.life ?? defaultWeekdays.life,
-        })
-      }
+      const nextWeekdays = parsed.weekdays
+        ? {
+            commission:
+              parsed.weekdays.commission ?? defaultWeekdays.commission,
+            creation:
+              parsed.weekdays.creation ?? defaultWeekdays.creation,
+            research:
+              parsed.weekdays.research ?? defaultWeekdays.research,
+            life: parsed.weekdays.life ?? defaultWeekdays.life,
+          }
+        : defaultWeekdays
 
-      if (parsed.holidays) {
-        setHolidays({
-          commission: parsed.holidays.commission ?? defaultHolidays.commission,
-          creation: parsed.holidays.creation ?? defaultHolidays.creation,
-          research: parsed.holidays.research ?? defaultHolidays.research,
-          life: parsed.holidays.life ?? defaultHolidays.life,
-        })
-      }
+      const nextHolidays = parsed.holidays
+        ? {
+            commission:
+              parsed.holidays.commission ?? defaultHolidays.commission,
+            creation:
+              parsed.holidays.creation ?? defaultHolidays.creation,
+            research:
+              parsed.holidays.research ?? defaultHolidays.research,
+            life: parsed.holidays.life ?? defaultHolidays.life,
+          }
+        : defaultHolidays
+
+      setWeekdays(nextWeekdays)
+      setHolidays(nextHolidays)
+      setSnapshot({
+        weekdays: nextWeekdays,
+        holidays: nextHolidays,
+        weekdaySleep: calcSleep(nextWeekdays),
+        holidaySleep: calcSleep(nextHolidays),
+        now: Date.now(),
+      })
     } catch (error) {
       console.error("Failed to load saved ratio:", error)
+      setSnapshot({
+        weekdays: defaultWeekdays,
+        holidays: defaultHolidays,
+        weekdaySleep: calcSleep(defaultWeekdays),
+        holidaySleep: calcSleep(defaultHolidays),
+        now: Date.now(),
+      })
     }
   }, [])
 
@@ -109,24 +252,6 @@ export default function Settings() {
   useEffect(() => {
     localStorage.setItem("settingsLanguage", language)
   }, [language])
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setNow(new Date())
-    }, 1000)
-
-    return () => clearInterval(timer)
-  }, [])
-
-  function calcSleep(data: RatioBase) {
-    const sum =
-      data.commission +
-      data.creation +
-      data.research +
-      data.life
-
-    return Math.max(0, 100 - sum)
-  }
 
   const weekdaySleep = useMemo(() => calcSleep(weekdays), [weekdays])
   const holidaySleep = useMemo(() => calcSleep(holidays), [holidays])
@@ -148,8 +273,8 @@ export default function Settings() {
           howUsed: "How this is used on the dashboard",
           howUsed1: "W = 平日の残り時間 / 合計時間",
           howUsed2: "H = 土日祝の残り時間 / 合計時間",
-          resetLabel: "初期値に戻す",
           langLabel: "日本語 / English",
+          refreshText: "テキストを更新",
         }
       : {
           title: "Edit Time Ratio",
@@ -166,8 +291,8 @@ export default function Settings() {
           howUsed: "How this is used on the dashboard",
           howUsed1: "W = remaining / total time on weekdays",
           howUsed2: "H = remaining / total time on holidays",
-          resetLabel: "Reset to default",
           langLabel: "日本語 / English",
+          refreshText: "Refresh text",
         }
 
   function slider(
@@ -256,95 +381,6 @@ export default function Settings() {
     )
   }
 
-  const calendarCounts = useMemo(() => {
-    const endOfYear = new Date(now.getFullYear(), 11, 31)
-
-    const tomorrow = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate() + 1
-    )
-
-    const isHoliday = (date: Date) => {
-      const day = date.getDay()
-      return day === 0 || day === 6
-    }
-
-    let weekdayRemainDaysYear = 0
-    let holidayRemainDaysYear = 0
-
-    {
-      const cursor = new Date(tomorrow)
-      while (cursor <= endOfYear) {
-        if (isHoliday(cursor)) {
-          holidayRemainDaysYear++
-        } else {
-          weekdayRemainDaysYear++
-        }
-        cursor.setDate(cursor.getDate() + 1)
-      }
-    }
-
-    return {
-      weekdayRemainDaysYear,
-      holidayRemainDaysYear,
-    }
-  }, [now])
-
-  const summaryMetrics = useMemo(() => {
-    const currentDayRemainingHours =
-      24 - now.getHours() - now.getMinutes() / 60 - now.getSeconds() / 3600
-
-    const currentDayType =
-      now.getDay() === 0 || now.getDay() === 6 ? "holidays" : "weekdays"
-
-    function calcRemainDays(
-      weekdayPercent: number,
-      holidayPercent: number
-    ): ItemMetrics {
-      const remainHours =
-        calendarCounts.weekdayRemainDaysYear * 24 * (weekdayPercent / 100) +
-        calendarCounts.holidayRemainDaysYear * 24 * (holidayPercent / 100) +
-        currentDayRemainingHours *
-          ((currentDayType === "weekdays" ? weekdayPercent : holidayPercent) /
-            100)
-
-      return {
-        remainDays: Math.round(remainHours / 24),
-      }
-    }
-
-    return {
-      commission: calcRemainDays(
-        weekdays.commission,
-        holidays.commission
-      ),
-      creation: calcRemainDays(
-        weekdays.creation,
-        holidays.creation
-      ),
-      research: calcRemainDays(
-        weekdays.research,
-        holidays.research
-      ),
-      life: calcRemainDays(
-        weekdays.life,
-        holidays.life
-      ),
-      sleep: calcRemainDays(
-        weekdaySleep,
-        holidaySleep
-      ),
-    }
-  }, [
-    now,
-    weekdays,
-    holidays,
-    weekdaySleep,
-    holidaySleep,
-    calendarCounts,
-  ])
-
   function jpHoursLine(
     prefix: string,
     data: RatioBase,
@@ -371,31 +407,63 @@ export default function Settings() {
   }
 
   const settingsText = useMemo(() => {
+    const baseSnapshot = snapshot ?? {
+      weekdays,
+      holidays,
+      weekdaySleep,
+      holidaySleep,
+      now: Date.now(),
+    }
+
+    const metrics = calcRemainDaysFromSnapshot(
+      new Date(baseSnapshot.now),
+      baseSnapshot.weekdays,
+      baseSnapshot.holidays,
+      baseSnapshot.weekdaySleep,
+      baseSnapshot.holidaySleep
+    )
+
     if (language === "jp") {
       return {
-        weekdays: jpHoursLine("平日", weekdays, weekdaySleep, "家事育児"),
-        holidays: jpHoursLine("土日祝", holidays, holidaySleep, "家事"),
-        remaining: `のこり時間：仕事 ${summaryMetrics.commission.remainDays}日、制作 ${summaryMetrics.creation.remainDays}日、勉強 ${summaryMetrics.research.remainDays}日、家事育児 ${summaryMetrics.life.remainDays}日、睡眠 ${summaryMetrics.sleep.remainDays}日`,
+        weekdays: jpHoursLine(
+          "平日",
+          baseSnapshot.weekdays,
+          baseSnapshot.weekdaySleep,
+          "家事育児"
+        ),
+        holidays: jpHoursLine(
+          "土日祝",
+          baseSnapshot.holidays,
+          baseSnapshot.holidaySleep,
+          "家事"
+        ),
+        remaining: `のこり時間：仕事 ${metrics.commission.remainDays}日、制作 ${metrics.creation.remainDays}日、勉強 ${metrics.research.remainDays}日、家事育児 ${metrics.life.remainDays}日、睡眠 ${metrics.sleep.remainDays}日`,
       }
     }
 
     return {
-      weekdays: enHoursLine("Weekdays", weekdays, weekdaySleep),
-      holidays: enHoursLine("Weekends & holidays", holidays, holidaySleep),
-      remaining: `Remaining time: Commission ${summaryMetrics.commission.remainDays} days, Creation ${summaryMetrics.creation.remainDays} days, Research ${summaryMetrics.research.remainDays} days, Life ${summaryMetrics.life.remainDays} days, Sleep ${summaryMetrics.sleep.remainDays} days`,
+      weekdays: enHoursLine(
+        "Weekdays",
+        baseSnapshot.weekdays,
+        baseSnapshot.weekdaySleep
+      ),
+      holidays: enHoursLine(
+        "Weekends & holidays",
+        baseSnapshot.holidays,
+        baseSnapshot.holidaySleep
+      ),
+      remaining: `Remaining time: Commission ${metrics.commission.remainDays} days, Creation ${metrics.creation.remainDays} days, Research ${metrics.research.remainDays} days, Life ${metrics.life.remainDays} days, Sleep ${metrics.sleep.remainDays} days`,
     }
-  }, [
-    language,
-    weekdays,
-    holidays,
-    weekdaySleep,
-    holidaySleep,
-    summaryMetrics,
-  ])
+  }, [language, snapshot, weekdays, holidays, weekdaySleep, holidaySleep])
 
-  function resetToDefault() {
-    setWeekdays(defaultWeekdays)
-    setHolidays(defaultHolidays)
+  function refreshTextSnapshot() {
+    setSnapshot({
+      weekdays: { ...weekdays },
+      holidays: { ...holidays },
+      weekdaySleep,
+      holidaySleep,
+      now: Date.now(),
+    })
   }
 
   function save() {
@@ -429,26 +497,6 @@ export default function Settings() {
     router.push(`/?wd=${wd}&hd=${hd}`)
   }
 
-  function RefreshIcon() {
-    return (
-      <svg
-        aria-hidden="true"
-        viewBox="0 0 24 24"
-        className="h-5 w-5"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d="M21 2v6h-6" />
-        <path d="M3 12a9 9 0 0 1 15-6l3 2" />
-        <path d="M3 22v-6h6" />
-        <path d="M21 12a9 9 0 0 1-15 6l-3-2" />
-      </svg>
-    )
-  }
-
   return (
     <main className="max-w-xl mx-auto px-5 py-8 sm:px-10 sm:py-16">
       <div className="fixed top-4 right-4 sm:top-5 sm:right-5 z-50 flex gap-3">
@@ -473,28 +521,6 @@ export default function Settings() {
           "
         >
           Aあ
-        </button>
-
-        <button
-          type="button"
-          onClick={resetToDefault}
-          aria-label={t.resetLabel}
-          title={t.resetLabel}
-          className="
-            h-11 w-11 sm:h-12 sm:w-12
-            rounded-full
-            border border-black/10
-            bg-white/85
-            text-black
-            shadow-[0_8px_30px_rgba(0,0,0,0.08)]
-            backdrop-blur-md
-            flex items-center justify-center
-            hover:bg-white
-            active:scale-95
-            transition
-          "
-        >
-          <RefreshIcon />
         </button>
       </div>
 
@@ -550,6 +576,25 @@ export default function Settings() {
           <div>{settingsText.holidays}</div>
           <div>{settingsText.remaining}</div>
         </div>
+
+        <button
+          type="button"
+          onClick={refreshTextSnapshot}
+          className="
+            mt-4
+            inline-flex
+            items-center
+            rounded-lg
+            border border-gray-200
+            px-3 py-1.5
+            text-xs
+            text-gray-600
+            hover:bg-gray-50
+            transition
+          "
+        >
+          {t.refreshText}
+        </button>
       </div>
 
       <button
