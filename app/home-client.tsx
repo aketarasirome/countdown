@@ -692,6 +692,19 @@ export default function HomeClient() {
           Edit Ratio
         </Link>
       </div>
+
+      <footer
+        className="
+          mt-24
+          pb-24
+          text-center
+          text-xs
+          text-gray-400
+        "
+      >
+        Copyright 2026 aketarasirome
+      </footer>
+
     </main>
   )
 }
