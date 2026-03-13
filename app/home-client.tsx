@@ -17,36 +17,6 @@ type Ratio = {
   holidays: RatioSet
 }
 
-type ItemMetrics = {
-  yearRemainHours: number
-  yearTotalHours: number
-  monthRemainHours: number
-  monthTotalHours: number
-  dayRemainHours: number
-  dayTotalHours: number
-  weekdayRemainHours: number
-  weekdayTotalHours: number
-  holidayRemainHours: number
-  holidayTotalHours: number
-}
-
-const defaultRatio: Ratio = {
-  weekdays: {
-    commission: 40,
-    creation: 20,
-    research: 10,
-    life: 10,
-    sleep: 20,
-  },
-  holidays: {
-    commission: 10,
-    creation: 40,
-    research: 10,
-    life: 20,
-    sleep: 20,
-  },
-}
-
 function buildRatioSet(
   commission: number,
   creation: number,
@@ -57,38 +27,18 @@ function buildRatioSet(
   return { commission, creation, research, life, sleep }
 }
 
-function parseRatioFromUrl(): Ratio | null {
-  if (typeof window === "undefined") return null
-
-  const params = new URLSearchParams(window.location.search)
-  const wd = params.get("wd")
-  const hd = params.get("hd")
-
-  if (!wd || !hd) return null
-
-  const parseGroup = (value: string) => {
-    const parts = value.split(",").map((v) => Number(v))
-    if (parts.length !== 4 || parts.some((n) => Number.isNaN(n))) {
-      return null
-    }
-    return buildRatioSet(parts[0], parts[1], parts[2], parts[3])
-  }
-
-  const weekdays = parseGroup(wd)
-  const holidays = parseGroup(hd)
-
-  if (!weekdays || !holidays) return null
-
-  return { weekdays, holidays }
+const defaultRatio: Ratio = {
+  weekdays: buildRatioSet(40, 20, 10, 10),
+  holidays: buildRatioSet(10, 40, 10, 20),
 }
 
 export default function HomeClient() {
   const YEAR_HOURS = 365 * 24
 
-  const [ratio, setRatio] = useState<Ratio>(defaultRatio)
-  const [now, setNow] = useState(new Date())
+  const [ratio, setRatio] = useState<Ratio | null>(null)
+  const [remaining, setRemaining] = useState(0)
 
-  const hd = useMemo(() => new Holidays("JP"), [])
+  const hd = new Holidays("JP")
 
   function isHoliday(date: Date) {
     const day = date.getDay()
@@ -97,293 +47,93 @@ export default function HomeClient() {
   }
 
   useEffect(() => {
-    const urlRatio = parseRatioFromUrl()
-    if (urlRatio) {
-      setRatio(urlRatio)
-      return
-    }
-
     const saved = localStorage.getItem("ratio")
+
     if (saved) {
-      try {
-        setRatio(JSON.parse(saved))
-      } catch (error) {
-        console.error("Failed to parse saved ratio:", error)
-      }
+      setRatio(JSON.parse(saved))
+    } else {
+      setRatio(defaultRatio)
     }
   }, [])
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setNow(new Date())
+      const end = new Date(
+        new Date().getFullYear(),
+        11,
+        31,
+        23,
+        59,
+        59
+      )
+
+      const now = new Date()
+
+      setRemaining(end.getTime() - now.getTime())
     }, 1000)
 
     return () => clearInterval(timer)
   }, [])
 
-  function remainingMs() {
-    const end = new Date(now.getFullYear(), 11, 31, 23, 59, 59)
-    return Math.max(0, end.getTime() - now.getTime())
-  }
+  const remain = useMemo(() => {
+    return Math.max(0, remaining / 1000 / 60 / 60)
+  }, [remaining])
 
-  function hours(ms: number) {
-    return Math.max(0, Math.floor(ms / 1000 / 60 / 60))
-  }
+  const remainH = Math.floor(remain)
+  const remainM = Math.floor((remain * 60) % 60)
+  const remainS = Math.floor((remain * 3600) % 60)
 
-  function minutes(ms: number) {
-    return Math.floor((ms / 1000 / 60) % 60)
-  }
+  const blocks = useMemo(() => {
+    if (!ratio) return null
 
-  function seconds(ms: number) {
-    return Math.floor((ms / 1000) % 60)
-  }
+    const commission = remain * (ratio.weekdays.commission / 100)
+    const creation = remain * (ratio.weekdays.creation / 100)
+    const research = remain * (ratio.weekdays.research / 100)
+    const life = remain * (ratio.weekdays.life / 100)
+    const sleep = remain * (ratio.weekdays.sleep / 100)
 
-  function hoursToDays(h: number) {
-    return Math.round(h / 24)
-  }
-
-  function formatCurrentTime(date: Date) {
-    return `${date.getFullYear()}.${date.getMonth() + 1}.${date.getDate()} ${date.getHours()}h ${date.getMinutes()}m ${date.getSeconds()}s`
-  }
-
-  const remaining = remainingMs()
-  const remainingHours = hours(remaining)
-
-  const calendarCounts = useMemo(() => {
-    const startOfYear = new Date(now.getFullYear(), 0, 1)
-    const endOfYear = new Date(now.getFullYear(), 11, 31)
-
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-
-    const tomorrow = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate() + 1
-    )
-
-    let weekdayTotalDaysYear = 0
-    let holidayTotalDaysYear = 0
-    let weekdayRemainDaysYear = 0
-    let holidayRemainDaysYear = 0
-
-    let weekdayTotalDaysMonth = 0
-    let holidayTotalDaysMonth = 0
-    let weekdayRemainDaysMonth = 0
-    let holidayRemainDaysMonth = 0
-
-    {
-      const cursor = new Date(startOfYear)
-      while (cursor <= endOfYear) {
-        if (isHoliday(cursor)) {
-          holidayTotalDaysYear++
-        } else {
-          weekdayTotalDaysYear++
-        }
-        cursor.setDate(cursor.getDate() + 1)
-      }
-    }
-
-    {
-      const cursor = new Date(tomorrow)
-      while (cursor <= endOfYear) {
-        if (isHoliday(cursor)) {
-          holidayRemainDaysYear++
-        } else {
-          weekdayRemainDaysYear++
-        }
-        cursor.setDate(cursor.getDate() + 1)
-      }
-    }
-
-    {
-      const cursor = new Date(startOfMonth)
-      while (cursor <= endOfMonth) {
-        if (isHoliday(cursor)) {
-          holidayTotalDaysMonth++
-        } else {
-          weekdayTotalDaysMonth++
-        }
-        cursor.setDate(cursor.getDate() + 1)
-      }
-    }
-
-    {
-      const cursor = new Date(tomorrow)
-      while (cursor <= endOfMonth) {
-        if (isHoliday(cursor)) {
-          holidayRemainDaysMonth++
-        } else {
-          weekdayRemainDaysMonth++
-        }
-        cursor.setDate(cursor.getDate() + 1)
-      }
-    }
+    const elapsed =
+      YEAR_HOURS - (commission + creation + research + life + sleep)
 
     return {
-      weekdayTotalDaysYear,
-      holidayTotalDaysYear,
-      weekdayRemainDaysYear,
-      holidayRemainDaysYear,
-      weekdayTotalDaysMonth,
-      holidayTotalDaysMonth,
-      weekdayRemainDaysMonth,
-      holidayRemainDaysMonth,
+      elapsed,
+      commission,
+      creation,
+      research,
+      life,
+      sleep,
     }
-  }, [hd, now.getFullYear(), now.getMonth(), now.getDate()])
-
-  const metrics = useMemo(() => {
-    const currentDayRemainingHours =
-      24 - now.getHours() - now.getMinutes() / 60 - now.getSeconds() / 3600
-
-    const currentDayType = isHoliday(now) ? "holidays" : "weekdays"
-
-    function calcItem(
-      weekdayPercent: number,
-      holidayPercent: number
-    ): ItemMetrics {
-      const yearTotalHours =
-        calendarCounts.weekdayTotalDaysYear * 24 * (weekdayPercent / 100) +
-        calendarCounts.holidayTotalDaysYear * 24 * (holidayPercent / 100)
-
-      const yearRemainHours =
-        calendarCounts.weekdayRemainDaysYear * 24 * (weekdayPercent / 100) +
-        calendarCounts.holidayRemainDaysYear * 24 * (holidayPercent / 100) +
-        currentDayRemainingHours *
-          ((currentDayType === "weekdays" ? weekdayPercent : holidayPercent) /
-            100)
-
-      const monthTotalHours =
-        calendarCounts.weekdayTotalDaysMonth * 24 * (weekdayPercent / 100) +
-        calendarCounts.holidayTotalDaysMonth * 24 * (holidayPercent / 100)
-
-      const monthRemainHours =
-        calendarCounts.weekdayRemainDaysMonth * 24 * (weekdayPercent / 100) +
-        calendarCounts.holidayRemainDaysMonth * 24 * (holidayPercent / 100) +
-        currentDayRemainingHours *
-          ((currentDayType === "weekdays" ? weekdayPercent : holidayPercent) /
-            100)
-
-      const dayTotalHours =
-        24 *
-        ((currentDayType === "weekdays" ? weekdayPercent : holidayPercent) / 100)
-
-      const dayRemainHours =
-        currentDayRemainingHours *
-        ((currentDayType === "weekdays" ? weekdayPercent : holidayPercent) / 100)
-
-      const weekdayTotalHours =
-        calendarCounts.weekdayTotalDaysYear * 24 * (weekdayPercent / 100)
-
-      const weekdayRemainHours =
-        calendarCounts.weekdayRemainDaysYear * 24 * (weekdayPercent / 100) +
-        (currentDayType === "weekdays"
-          ? currentDayRemainingHours * (weekdayPercent / 100)
-          : 0)
-
-      const holidayTotalHours =
-        calendarCounts.holidayTotalDaysYear * 24 * (holidayPercent / 100)
-
-      const holidayRemainHours =
-        calendarCounts.holidayRemainDaysYear * 24 * (holidayPercent / 100) +
-        (currentDayType === "holidays"
-          ? currentDayRemainingHours * (holidayPercent / 100)
-          : 0)
-
-      return {
-        yearRemainHours,
-        yearTotalHours,
-        monthRemainHours,
-        monthTotalHours,
-        dayRemainHours,
-        dayTotalHours,
-        weekdayRemainHours,
-        weekdayTotalHours,
-        holidayRemainHours,
-        holidayTotalHours,
-      }
-    }
-
-    return {
-      total: calcItem(100, 100),
-      commission: calcItem(
-        ratio.weekdays.commission,
-        ratio.holidays.commission
-      ),
-      creation: calcItem(
-        ratio.weekdays.creation,
-        ratio.holidays.creation
-      ),
-      research: calcItem(
-        ratio.weekdays.research,
-        ratio.holidays.research
-      ),
-      life: calcItem(
-        ratio.weekdays.life,
-        ratio.holidays.life
-      ),
-      sleep: calcItem(
-        ratio.weekdays.sleep,
-        ratio.holidays.sleep
-      ),
-    }
-  }, [
-    ratio,
-    calendarCounts,
-    now.getHours(),
-    now.getMinutes(),
-    now.getSeconds(),
-  ])
-
-  const elapsedHours = YEAR_HOURS - remainingHours
-
-  const segments = [
-    { key: "elapsed", value: elapsedHours, color: "#000000" },
-    { key: "commission", value: metrics.commission.yearRemainHours, color: "#3B82F6" },
-    { key: "creation", value: metrics.creation.yearRemainHours, color: "#9333EA" },
-    { key: "research", value: metrics.research.yearRemainHours, color: "#F59E0B" },
-    { key: "life", value: metrics.life.yearRemainHours, color: "#10B981" },
-    { key: "sleep", value: metrics.sleep.yearRemainHours, color: "#EF4444" },
-  ]
-
-  function segmentWidth(hoursValue: number) {
-    return `${(hoursValue / YEAR_HOURS) * 100}%`
-  }
+  }, [ratio, remain])
 
   function shareUrl() {
+    if (!ratio) return ""
+
     const wd = [
       ratio.weekdays.commission,
       ratio.weekdays.creation,
       ratio.weekdays.research,
       ratio.weekdays.life,
     ].join(",")
-  
+
     const hdValues = [
       ratio.holidays.commission,
       ratio.holidays.creation,
       ratio.holidays.research,
       ratio.holidays.life,
     ].join(",")
-  
+
     const now = new Date()
     const sharedAtMs = String(now.getTime())
     const tzOffset = String(now.getTimezoneOffset())
     const v = String(now.getTime())
-  
+
     const params = new URLSearchParams()
     params.set("wd", wd)
     params.set("hd", hdValues)
     params.set("sharedAtMs", sharedAtMs)
     params.set("tzOffset", tzOffset)
     params.set("v", v)
-  
-    if (typeof window === "undefined") {
-      return `/?${params.toString()}`
-    }
-  
-    return `${window.location.origin}?${params.toString()}`
-  }
-  
+
     return `${window.location.origin}?${params.toString()}`
   }
 
@@ -391,16 +141,10 @@ export default function HomeClient() {
     const url = shareUrl()
 
     try {
-      if (typeof navigator !== "undefined" && navigator.clipboard) {
-        await navigator.clipboard.writeText(url)
-        window.alert("Share URL copied")
-        return
-      }
-
-      window.alert(url)
-    } catch (error) {
-      console.error("Failed to copy share URL:", error)
-      window.alert(url)
+      await navigator.clipboard.writeText(url)
+      alert("Share URL copied")
+    } catch {
+      alert(url)
     }
   }
 
@@ -423,155 +167,52 @@ export default function HomeClient() {
     )
   }
 
-  function MetricLine({
-    label,
-    remainHours,
-    totalHours,
-    showDays = true,
-  }: {
-    label: string
-    remainHours: number
-    totalHours: number
-    showDays?: boolean
-  }) {
-    return (
-      <div className="break-words">
-        <span className="inline-block min-w-[1.6rem]">{label} :</span>{" "}
-        {Math.round(remainHours)}h
-        {showDays && (
-          <span className="text-gray-400 ml-0.5">
-            ({hoursToDays(remainHours)}d)
-          </span>
-        )}
-        /
-        {Math.round(totalHours)}h
-        {showDays && (
-          <span className="text-gray-400 ml-0.5">
-            ({hoursToDays(totalHours)}d)
-          </span>
-        )}
-      </div>
-    )
+  if (!ratio || !blocks) return null
+
+  const total = YEAR_HOURS
+
+  function width(h: number) {
+    return `${(h / total) * 100}%`
   }
 
-  function block(
-    title: string,
-    color: string,
-    data: ItemMetrics
-  ) {
-    return (
-      <div className="min-w-0">
-        <div className="flex items-center gap-2">
-          <div
-            className="shrink-0"
-            style={{ width: 12, height: 12, background: color }}
-          />
-          <div className="text-gray-600 text-base sm:text-lg">{title}</div>
-        </div>
-
-        <div className="mt-3 text-xs sm:text-sm leading-7 sm:leading-8 break-words">
-          <MetricLine
-            label="Y"
-            remainHours={data.yearRemainHours}
-            totalHours={data.yearTotalHours}
-          />
-          <MetricLine
-            label="M"
-            remainHours={data.monthRemainHours}
-            totalHours={data.monthTotalHours}
-          />
-          <MetricLine
-            label="D"
-            remainHours={data.dayRemainHours}
-            totalHours={data.dayTotalHours}
-            showDays={false}
-          />
-          <MetricLine
-            label="W"
-            remainHours={data.weekdayRemainHours}
-            totalHours={data.weekdayTotalHours}
-          />
-          <MetricLine
-            label="H"
-            remainHours={data.holidayRemainHours}
-            totalHours={data.holidayTotalHours}
-          />
-        </div>
-      </div>
-    )
-  }
+  const now = new Date()
 
   return (
     <main className="font-sans max-w-4xl mx-auto px-5 py-8 sm:px-10 sm:py-16">
       <button
-        onClick={copyShareUrl}
         aria-label="Copy share URL"
-        className="
-          fixed top-4 right-4 sm:top-5 sm:right-5 z-50
-          h-11 w-11 sm:h-12 sm:w-12
-          rounded-full
-          border border-black/10
-          bg-white/85
-          text-black
-          shadow-[0_8px_30px_rgba(0,0,0,0.08)]
-          backdrop-blur-md
-          flex items-center justify-center
-          hover:bg-white
-          active:scale-95
-          transition
-        "
+        onClick={copyShareUrl}
+        className="fixed top-4 right-4 sm:top-5 sm:right-5 z-50 h-11 w-11 sm:h-12 sm:w-12 rounded-full border border-black/10 bg-white/85 text-black shadow-[0_8px_30px_rgba(0,0,0,0.08)] backdrop-blur-md flex items-center justify-center hover:bg-white active:scale-95 transition"
       >
         <ShareIcon />
       </button>
 
       <h1 className="text-2xl sm:text-4xl font-bold leading-tight break-words">
-        {formatCurrentTime(now)}
+        {now.getFullYear()}.{now.getMonth() + 1}.{now.getDate()}{" "}
+        {now.getHours()}h {now.getMinutes()}m {now.getSeconds()}s
       </h1>
 
       <div className="mt-10 sm:mt-16">
         <div className="text-5xl sm:text-6xl font-bold leading-none break-words">
-          {hours(remaining)}h {minutes(remaining)}m {seconds(remaining)}s
+          {remainH}h {remainM}m {remainS}s
         </div>
       </div>
 
       <div className="mt-10 sm:mt-16">
         <div className="w-full h-10 sm:h-14 rounded-2xl overflow-hidden flex bg-gray-100">
-          {segments.map((segment) => (
-            <div
-              key={segment.key}
-              style={{
-                width: segmentWidth(segment.value),
-                background: segment.color,
-              }}
-            />
-          ))}
+          <div style={{ width: width(blocks.elapsed), background: "#000000" }} />
+          <div style={{ width: width(blocks.commission), background: "#3B82F6" }} />
+          <div style={{ width: width(blocks.creation), background: "#9333EA" }} />
+          <div style={{ width: width(blocks.research), background: "#F59E0B" }} />
+          <div style={{ width: width(blocks.life), background: "#10B981" }} />
+          <div style={{ width: width(blocks.sleep), background: "#EF4444" }} />
         </div>
-      </div>
-
-      <div className="mt-12 sm:mt-20 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-10 sm:gap-12 text-sm">
-        {block("Total", "#000", metrics.total)}
-        {block("Commission", "#3B82F6", metrics.commission)}
-        {block("Creation", "#9333EA", metrics.creation)}
-        {block("Research", "#F59E0B", metrics.research)}
-        {block("Life", "#10B981", metrics.life)}
-        {block("Sleep", "#EF4444", metrics.sleep)}
       </div>
 
       <div className="mt-16 sm:mt-24 flex justify-center">
         <Link
           href="/settings"
-          className="
-            w-full sm:w-auto
-            text-center
-            bg-black
-            text-white
-            px-8 sm:px-10
-            py-4
-            rounded-xl
-            text-base sm:text-lg
-            hover:opacity-80
-            transition
-          "
+          className="w-full sm:w-auto text-center bg-black text-white px-8 sm:px-10 py-4 rounded-xl text-base sm:text-lg hover:opacity-80 transition"
         >
           Edit Ratio
         </Link>
