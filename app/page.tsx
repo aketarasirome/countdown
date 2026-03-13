@@ -41,7 +41,7 @@ export async function generateMetadata({
     ? `https://countdown-00.vercel.app/api/og?${queryString}`
     : "https://countdown-00.vercel.app/api/og"
 
-  const title = "Life Countdown"
+  const title = "Countdown Clock"
   const description = sharedLabel
     ? `Visualize how you spend the remaining hours of the year. Shared at ${sharedLabel}.`
     : "Visualize how you spend the remaining hours of the year."
@@ -57,13 +57,13 @@ export async function generateMetadata({
       description,
       type: "website",
       url: pageUrl,
-      siteName: "Life Countdown",
+      siteName: "Countdown Clock",
       images: [
         {
           url: ogImageUrl,
           width: 1200,
           height: 630,
-          alt: "Life Countdown preview",
+          alt: "Countdown Clock preview",
         },
       ],
     },
