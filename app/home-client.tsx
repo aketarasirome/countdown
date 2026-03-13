@@ -365,18 +365,24 @@ export default function HomeClient() {
       ratio.holidays.life,
     ].join(",")
   
-    const sharedAt = new Date().toISOString()
-    const v = Date.now().toString()
+    const now = new Date()
+    const sharedAtMs = String(now.getTime())
+    const tzOffset = String(now.getTimezoneOffset())
+    const v = String(now.getTime())
   
     const params = new URLSearchParams()
     params.set("wd", wd)
     params.set("hd", hdValues)
-    params.set("sharedAt", sharedAt)
+    params.set("sharedAtMs", sharedAtMs)
+    params.set("tzOffset", tzOffset)
     params.set("v", v)
   
     if (typeof window === "undefined") {
       return `/?${params.toString()}`
     }
+  
+    return `${window.location.origin}?${params.toString()}`
+  }
   
     return `${window.location.origin}?${params.toString()}`
   }
