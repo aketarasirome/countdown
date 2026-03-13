@@ -43,30 +43,6 @@ function remainingTimeAt(sharedAt: string | null) {
   return { h, m, s, totalHours }
 }
 
-async function loadGoogleFont(font: string, weight: number, text: string) {
-  const url = `https://fonts.googleapis.com/css2?family=${font.replace(
-    / /g,
-    "+"
-  )}:wght@${weight}&text=${encodeURIComponent(text)}`
-
-  const css = await fetch(url, {
-    headers: {
-      "User-Agent":
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-    },
-    cache: "force-cache",
-  }).then((res) => res.text())
-
-  const match = css.match(/src: url\(([^)]+)\) format\('(opentype|truetype|woff2|woff)'\)/)
-
-  if (!match) {
-    throw new Error(`Failed to load font: ${font} ${weight}`)
-  }
-
-  const fontFileUrl = match[1]
-  return fetch(fontFileUrl).then((res) => res.arrayBuffer())
-}
-
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
 
@@ -99,12 +75,6 @@ export async function GET(request: Request) {
   const widthFor = (hours: number) =>
     Math.max(0, Math.round((hours / totalHours) * totalWidth))
 
-  const fontText =
-    "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ.,:()/- hmsTotalCommissionCreationResearchLifeSleep"
-
-  const geistRegular = await loadGoogleFont("Geist", 400, fontText)
-  const geistBold = await loadGoogleFont("Geist", 700, fontText)
-
   return new ImageResponse(
     (
       <div
@@ -116,7 +86,8 @@ export async function GET(request: Request) {
           backgroundColor: "#f3f3f1",
           padding: "64px 68px",
           color: "#111111",
-          fontFamily: "Geist",
+          fontFamily:
+            'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif',
         }}
       >
         <div
@@ -251,20 +222,6 @@ export async function GET(request: Request) {
     {
       width: 1200,
       height: 630,
-      fonts: [
-        {
-          name: "Geist",
-          data: geistRegular,
-          weight: 400,
-          style: "normal",
-        },
-        {
-          name: "Geist",
-          data: geistBold,
-          weight: 700,
-          style: "normal",
-        },
-      ],
     }
   )
 }
