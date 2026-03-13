@@ -59,7 +59,7 @@ function remainingTimeAt(sharedAtMs: string | null, tzOffset: string | null) {
 }
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url)
+  const { searchParams, origin } = new URL(request.url)
 
   const weekdays =
     parseGroup(searchParams.get("wd")) ?? buildRatioSet(40, 20, 10, 10)
@@ -80,6 +80,7 @@ export async function GET(request: Request) {
 
   const remainTime = remainingTimeAt(sharedAtMs, tzOffset)
   const remain = remainTime.totalHours
+  const syncedDigit = Math.abs(remainTime.s % 10)
 
   const commission = Math.round(remain * (weekdays.commission / 100))
   const creation = Math.round(remain * (weekdays.creation / 100))
@@ -98,6 +99,15 @@ export async function GET(request: Request) {
   const widthFor = (hours: number) =>
     Math.max(0, Math.round((hours / totalHours) * totalWidth))
 
+  const digitImageUrl = `${origin}/digits/${syncedDigit}.png`
+  const digitImageResponse = await fetch(digitImageUrl, {
+    cache: "no-store",
+  })
+
+  const digitImageArrayBuffer = await digitImageResponse.arrayBuffer()
+  const digitImageBase64 = Buffer.from(digitImageArrayBuffer).toString("base64")
+  const digitImageDataUrl = `data:image/png;base64,${digitImageBase64}`
+
   return new ImageResponse(
     (
       <div
@@ -111,6 +121,7 @@ export async function GET(request: Request) {
           color: "#111111",
           fontFamily:
             'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif',
+          position: "relative",
         }}
       >
         <div
@@ -134,10 +145,26 @@ export async function GET(request: Request) {
             lineHeight: 1,
             letterSpacing: "-0.05em",
             marginBottom: 56,
+            paddingRight: "180px",
           }}
         >
           {remainTime.h}h {remainTime.m}m {remainTime.s}s
         </div>
+
+        <img
+          src={digitImageDataUrl}
+          alt=""
+          width="150"
+          height="150"
+          style={{
+            position: "absolute",
+            right: "50px",
+            top: "30px",
+            width: "260px",
+            height: "260px",
+            objectFit: "contain",
+          }}
+        />
 
         <div
           style={{
@@ -150,12 +177,54 @@ export async function GET(request: Request) {
             marginBottom: 56,
           }}
         >
-          <div style={{ display: "flex", width: `${widthFor(elapsed)}px`, height: "72px", backgroundColor: "#000000" }} />
-          <div style={{ display: "flex", width: `${widthFor(commission)}px`, height: "72px", backgroundColor: "#3B82F6" }} />
-          <div style={{ display: "flex", width: `${widthFor(creation)}px`, height: "72px", backgroundColor: "#9333EA" }} />
-          <div style={{ display: "flex", width: `${widthFor(research)}px`, height: "72px", backgroundColor: "#F59E0B" }} />
-          <div style={{ display: "flex", width: `${widthFor(life)}px`, height: "72px", backgroundColor: "#10B981" }} />
-          <div style={{ display: "flex", width: `${widthFor(sleep)}px`, height: "72px", backgroundColor: "#EF4444" }} />
+          <div
+            style={{
+              display: "flex",
+              width: `${widthFor(elapsed)}px`,
+              height: "72px",
+              backgroundColor: "#000000",
+            }}
+          />
+          <div
+            style={{
+              display: "flex",
+              width: `${widthFor(commission)}px`,
+              height: "72px",
+              backgroundColor: "#3B82F6",
+            }}
+          />
+          <div
+            style={{
+              display: "flex",
+              width: `${widthFor(creation)}px`,
+              height: "72px",
+              backgroundColor: "#9333EA",
+            }}
+          />
+          <div
+            style={{
+              display: "flex",
+              width: `${widthFor(research)}px`,
+              height: "72px",
+              backgroundColor: "#F59E0B",
+            }}
+          />
+          <div
+            style={{
+              display: "flex",
+              width: `${widthFor(life)}px`,
+              height: "72px",
+              backgroundColor: "#10B981",
+            }}
+          />
+          <div
+            style={{
+              display: "flex",
+              width: `${widthFor(sleep)}px`,
+              height: "72px",
+              backgroundColor: "#EF4444",
+            }}
+          />
         </div>
 
         <div

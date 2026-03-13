@@ -162,6 +162,7 @@ export default function HomeClient() {
 
   const remaining = remainingMs()
   const remainingHours = hours(remaining)
+  const syncedDigit = now.getSeconds() % 10
 
   const calendarCounts = useMemo(() => {
     const startOfYear = new Date(now.getFullYear(), 0, 1)
@@ -461,7 +462,7 @@ export default function HomeClient() {
           m: "月",
           d: "日",
           w: "平日",
-          h: "休日",
+          h: "土日祝",
         }
       : {
           total: "Total",
@@ -627,10 +628,26 @@ export default function HomeClient() {
         {formatCurrentTime(now)}
       </h1>
 
-      <div className="mt-10 sm:mt-16">
-        <div className="text-5xl sm:text-6xl font-bold leading-none break-words">
+      <div className="relative mt-10 sm:mt-16">
+        <div className="text-5xl sm:text-6xl font-bold leading-none break-words pr-28 sm:pr-40">
           {hours(remaining)}h {minutes(remaining)}m {seconds(remaining)}s
         </div>
+
+        <img
+          src={`/digits/${syncedDigit}.png`}
+          alt=""
+          className="
+            absolute
+            right-0
+            top-1/2
+            -translate-y-1/2
+            w-24
+            sm:w-32
+            md:w-40
+            pointer-events-none
+            select-none
+          "
+        />
       </div>
 
       <div className="mt-10 sm:mt-16">
