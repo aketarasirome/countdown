@@ -15,6 +15,12 @@ type SavedRatio = {
   holidays: RatioBase & { sleep?: number }
 }
 
+type Language = "en" | "jp"
+
+type ItemMetrics = {
+  remainDays: number
+}
+
 const defaultWeekdays: RatioBase = {
   commission: 40,
   creation: 20,
@@ -50,6 +56,8 @@ export default function Settings() {
 
   const [weekdays, setWeekdays] = useState<RatioBase>(defaultWeekdays)
   const [holidays, setHolidays] = useState<RatioBase>(defaultHolidays)
+  const [language, setLanguage] = useState<Language>("en")
+  const [now, setNow] = useState(new Date())
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -91,6 +99,25 @@ export default function Settings() {
     }
   }, [])
 
+  useEffect(() => {
+    const savedLanguage = localStorage.getItem("settingsLanguage")
+    if (savedLanguage === "jp" || savedLanguage === "en") {
+      setLanguage(savedLanguage)
+    }
+  }, [])
+
+  useEffect(() => {
+    localStorage.setItem("settingsLanguage", language)
+  }, [language])
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNow(new Date())
+    }, 1000)
+
+    return () => clearInterval(timer)
+  }, [])
+
   function calcSleep(data: RatioBase) {
     const sum =
       data.commission +
@@ -103,6 +130,67 @@ export default function Settings() {
 
   const weekdaySleep = useMemo(() => calcSleep(weekdays), [weekdays])
   const holidaySleep = useMemo(() => calcSleep(holidays), [holidays])
+
+  const t =
+    language === "jp"
+      ? {
+          title: "時間配分を編集",
+          weekdays: "平日",
+          weekdaysDesc: "月曜日から金曜日。日本の祝日を除きます。",
+          holidays: "土日祝",
+          holidaysDesc: "土曜、日曜、日本の祝日。",
+          commission: "仕事",
+          creation: "制作",
+          research: "勉強",
+          life: "家事育児",
+          sleep: "睡眠",
+          save: "保存",
+          howUsed: "How this is used on the dashboard",
+          howUsed1: "W = 平日の残り時間 / 合計時間",
+          howUsed2: "H = 土日祝の残り時間 / 合計時間",
+          weekdaysText: "平日",
+          holidaysText: "土日祝",
+          remainingText: "のこり時間",
+          hoursPerDay: "時間",
+          daySuffix: "日",
+          copied: "コピーしました",
+          resetLabel: "初期値に戻す",
+          langLabel: "日本語 / English",
+          commissionShort: "仕事",
+          creationShort: "制作",
+          researchShort: "勉強",
+          lifeShort: "家事育児",
+          holidayLifeShort: "家事",
+        }
+      : {
+          title: "Edit Time Ratio",
+          weekdays: "Weekdays",
+          weekdaysDesc: "Monday to Friday, excluding Japanese public holidays.",
+          holidays: "Holidays",
+          holidaysDesc: "Saturdays, Sundays, and Japanese public holidays.",
+          commission: "Commission",
+          creation: "Creation",
+          research: "Research",
+          life: "Life",
+          sleep: "Sleep",
+          save: "Save",
+          howUsed: "How this is used on the dashboard",
+          howUsed1: "W = remaining / total time on weekdays",
+          howUsed2: "H = remaining / total time on holidays",
+          weekdaysText: "Weekdays",
+          holidaysText: "Weekends & holidays",
+          remainingText: "Remaining time",
+          hoursPerDay: "hours",
+          daySuffix: "days",
+          copied: "Copied",
+          resetLabel: "Reset to default",
+          langLabel: "日本語 / English",
+          commissionShort: "Commission",
+          creationShort: "Creation",
+          researchShort: "Research",
+          lifeShort: "Life",
+          holidayLifeShort: "Life",
+        }
 
   function slider(
     title: string,
@@ -167,7 +255,7 @@ export default function Settings() {
     return (
       <div className="mb-8 sm:mb-10 opacity-60">
         <div className="text-sm font-medium mb-1">
-          Sleep
+          {t.sleep}
         </div>
 
         <div className="text-sm">
@@ -188,6 +276,149 @@ export default function Settings() {
         />
       </div>
     )
+  }
+
+  function remainingMs() {
+    const end = new Date(now.getFullYear(), 11, 31, 23, 59, 59)
+    return Math.max(0, end.getTime() - now.getTime())
+  }
+
+  const calendarCounts = useMemo(() => {
+    const startOfYear = new Date(now.getFullYear(), 0, 1)
+    const endOfYear = new Date(now.getFullYear(), 11, 31)
+
+    const tomorrow = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() + 1
+    )
+
+    const isHoliday = (date: Date) => {
+      const day = date.getDay()
+      return day === 0 || day === 6
+    }
+
+    let weekdayRemainDaysYear = 0
+    let holidayRemainDaysYear = 0
+
+    {
+      const cursor = new Date(tomorrow)
+      while (cursor <= endOfYear) {
+        if (isHoliday(cursor)) {
+          holidayRemainDaysYear++
+        } else {
+          weekdayRemainDaysYear++
+        }
+        cursor.setDate(cursor.getDate() + 1)
+      }
+    }
+
+    return {
+      weekdayRemainDaysYear,
+      holidayRemainDaysYear,
+    }
+  }, [now])
+
+  const summaryMetrics = useMemo(() => {
+    const currentDayRemainingHours =
+      24 - now.getHours() - now.getMinutes() / 60 - now.getSeconds() / 3600
+
+    const currentDayType =
+      now.getDay() === 0 || now.getDay() === 6 ? "holidays" : "weekdays"
+
+    function calcRemainDays(
+      weekdayPercent: number,
+      holidayPercent: number
+    ): ItemMetrics {
+      const remainHours =
+        calendarCounts.weekdayRemainDaysYear * 24 * (weekdayPercent / 100) +
+        calendarCounts.holidayRemainDaysYear * 24 * (holidayPercent / 100) +
+        currentDayRemainingHours *
+          ((currentDayType === "weekdays" ? weekdayPercent : holidayPercent) /
+            100)
+
+      return {
+        remainDays: Math.round(remainHours / 24),
+      }
+    }
+
+    return {
+      commission: calcRemainDays(
+        weekdays.commission,
+        holidays.commission
+      ),
+      creation: calcRemainDays(
+        weekdays.creation,
+        holidays.creation
+      ),
+      research: calcRemainDays(
+        weekdays.research,
+        holidays.research
+      ),
+      life: calcRemainDays(
+        weekdays.life,
+        holidays.life
+      ),
+      sleep: calcRemainDays(
+        weekdaySleep,
+        holidaySleep
+      ),
+    }
+  }, [
+    now,
+    weekdays,
+    holidays,
+    weekdaySleep,
+    holidaySleep,
+    calendarCounts,
+  ])
+
+  function jpHoursLine(prefix: string, data: RatioBase, sleep: number, lifeLabel: string) {
+    const commissionHours = Math.round((24 * data.commission) / 100)
+    const creationHours = Math.round((24 * data.creation) / 100)
+    const researchHours = Math.round((24 * data.research) / 100)
+    const lifeHours = Math.round((24 * data.life) / 100)
+    const sleepHours = Math.round((24 * sleep) / 100)
+
+    return `${prefix}：仕事 ${commissionHours}時間、制作 ${creationHours}時間、勉強 ${researchHours}時間、${lifeLabel} ${lifeHours}時間、睡眠 ${sleepHours}時間`
+  }
+
+  function enHoursLine(prefix: string, data: RatioBase, sleep: number) {
+    const commissionHours = Math.round((24 * data.commission) / 100)
+    const creationHours = Math.round((24 * data.creation) / 100)
+    const researchHours = Math.round((24 * data.research) / 100)
+    const lifeHours = Math.round((24 * data.life) / 100)
+    const sleepHours = Math.round((24 * sleep) / 100)
+
+    return `${prefix}: Commission ${commissionHours}h, Creation ${creationHours}h, Research ${researchHours}h, Life ${lifeHours}h, Sleep ${sleepHours}h`
+  }
+
+  const settingsText = useMemo(() => {
+    if (language === "jp") {
+      return {
+        weekdays: jpHoursLine("平日", weekdays, weekdaySleep, "家事育児"),
+        holidays: jpHoursLine("土日祝", holidays, holidaySleep, "家事"),
+        remaining: `のこり時間：仕事 ${summaryMetrics.commission.remainDays}日、制作 ${summaryMetrics.creation.remainDays}日、勉強 ${summaryMetrics.research.remainDays}日、家事育児 ${summaryMetrics.life.remainDays}日、睡眠 ${summaryMetrics.sleep.remainDays}日`,
+      }
+    }
+
+    return {
+      weekdays: enHoursLine("Weekdays", weekdays, weekdaySleep),
+      holidays: enHoursLine("Weekends & holidays", holidays, holidaySleep),
+      remaining: `Remaining time: Commission ${summaryMetrics.commission.remainDays} days, Creation ${summaryMetrics.creation.remainDays} days, Research ${summaryMetrics.research.remainDays} days, Life ${summaryMetrics.life.remainDays} days, Sleep ${summaryMetrics.sleep.remainDays} days`,
+    }
+  }, [
+    language,
+    weekdays,
+    holidays,
+    weekdaySleep,
+    holidaySleep,
+    summaryMetrics,
+  ])
+
+  function resetToDefault() {
+    setWeekdays(defaultWeekdays)
+    setHolidays(defaultHolidays)
   }
 
   function save() {
@@ -221,53 +452,146 @@ export default function Settings() {
     router.push(`/?wd=${wd}&hd=${hd}`)
   }
 
+  function LanguageIcon() {
+    return (
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 24 24"
+        className="h-5 w-5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M4 5h12" />
+        <path d="M10 5c0 7-2 11-6 14" />
+        <path d="M6 11c1.5 0 4.5.5 7 3" />
+        <path d="M14 15l3-8 3 8" />
+        <path d="M15 13h4" />
+      </svg>
+    )
+  }
+
+  function RefreshIcon() {
+    return (
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 24 24"
+        className="h-5 w-5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M21 2v6h-6" />
+        <path d="M3 12a9 9 0 0 1 15-6l3 2" />
+        <path d="M3 22v-6h6" />
+        <path d="M21 12a9 9 0 0 1-15 6l-3-2" />
+      </svg>
+    )
+  }
+
   return (
     <main className="max-w-xl mx-auto px-5 py-8 sm:px-10 sm:py-16">
+      <div className="fixed top-4 right-4 sm:top-5 sm:right-5 z-50 flex gap-3">
+        <button
+          type="button"
+          onClick={() => setLanguage((prev) => (prev === "en" ? "jp" : "en"))}
+          aria-label={t.langLabel}
+          title={t.langLabel}
+          className="
+            h-11 w-11 sm:h-12 sm:w-12
+            rounded-full
+            border border-black/10
+            bg-white/85
+            text-black
+            shadow-[0_8px_30px_rgba(0,0,0,0.08)]
+            backdrop-blur-md
+            flex items-center justify-center
+            hover:bg-white
+            active:scale-95
+            transition
+          "
+        >
+          <LanguageIcon />
+        </button>
+
+        <button
+          type="button"
+          onClick={resetToDefault}
+          aria-label={t.resetLabel}
+          title={t.resetLabel}
+          className="
+            h-11 w-11 sm:h-12 sm:w-12
+            rounded-full
+            border border-black/10
+            bg-white/85
+            text-black
+            shadow-[0_8px_30px_rgba(0,0,0,0.08)]
+            backdrop-blur-md
+            flex items-center justify-center
+            hover:bg-white
+            active:scale-95
+            transition
+          "
+        >
+          <RefreshIcon />
+        </button>
+      </div>
+
       <h1 className="text-2xl sm:text-3xl font-bold mb-10 sm:mb-14 leading-tight">
-        Edit Time Ratio
+        {t.title}
       </h1>
 
       <section className="mb-12 sm:mb-16">
         <h2 className="text-lg sm:text-xl mb-2 text-gray-500">
-          Weekdays
+          {t.weekdays}
         </h2>
 
         <p className="text-sm text-gray-500 mb-6 sm:mb-8 leading-6">
-          Monday to Friday, excluding Japanese public holidays.
+          {t.weekdaysDesc}
         </p>
 
-        {slider("Commission", "commission", weekdays, setWeekdays)}
-        {slider("Creation", "creation", weekdays, setWeekdays)}
-        {slider("Research", "research", weekdays, setWeekdays)}
-        {slider("Life", "life", weekdays, setWeekdays)}
+        {slider(t.commission, "commission", weekdays, setWeekdays)}
+        {slider(t.creation, "creation", weekdays, setWeekdays)}
+        {slider(t.research, "research", weekdays, setWeekdays)}
+        {slider(t.life, "life", weekdays, setWeekdays)}
         {sleepSlider(weekdays)}
       </section>
 
       <section>
         <h2 className="text-lg sm:text-xl mb-2 text-gray-500">
-          Holidays
+          {t.holidays}
         </h2>
 
         <p className="text-sm text-gray-500 mb-6 sm:mb-8 leading-6">
-          Saturdays, Sundays, and Japanese public holidays.
+          {t.holidaysDesc}
         </p>
 
-        {slider("Commission", "commission", holidays, setHolidays)}
-        {slider("Creation", "creation", holidays, setHolidays)}
-        {slider("Research", "research", holidays, setHolidays)}
-        {slider("Life", "life", holidays, setHolidays)}
+        {slider(t.commission, "commission", holidays, setHolidays)}
+        {slider(t.creation, "creation", holidays, setHolidays)}
+        {slider(t.research, "research", holidays, setHolidays)}
+        {slider(t.life, "life", holidays, setHolidays)}
         {sleepSlider(holidays)}
       </section>
 
       <div className="mt-10 sm:mt-14 rounded-2xl border border-gray-200 p-4 sm:p-5 text-sm text-gray-600 leading-6">
         <div className="mb-2 font-medium text-black">
-          How this is used on the dashboard
+          {t.howUsed}
         </div>
         <div>
-          W = remaining / total time on weekdays
+          {t.howUsed1}
         </div>
-        <div>
-          H = remaining / total time on holidays
+        <div className="mb-4">
+          {t.howUsed2}
+        </div>
+
+        <div className="space-y-2 whitespace-pre-wrap break-words">
+          <div>{settingsText.weekdays}</div>
+          <div>{settingsText.holidays}</div>
+          <div>{settingsText.remaining}</div>
         </div>
       </div>
 
@@ -285,7 +609,7 @@ export default function Settings() {
           transition
         "
       >
-        Save
+        {t.save}
       </button>
     </main>
   )
