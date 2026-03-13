@@ -162,7 +162,7 @@ export default function HomeClient() {
 
   const remaining = remainingMs()
   const remainingHours = hours(remaining)
-  const syncedDigit = now.getSeconds() % 10
+  const syncedDigit = seconds(remaining) % 10
 
   const calendarCounts = useMemo(() => {
     const startOfYear = new Date(now.getFullYear(), 0, 1)
