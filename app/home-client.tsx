@@ -30,6 +30,8 @@ type ItemMetrics = {
   holidayTotalHours: number
 }
 
+type Language = "en" | "jp"
+
 const defaultRatio: Ratio = {
   weekdays: {
     commission: 40,
@@ -87,8 +89,20 @@ export default function HomeClient() {
 
   const [ratio, setRatio] = useState<Ratio>(defaultRatio)
   const [now, setNow] = useState(new Date())
+  const [language, setLanguage] = useState<Language>("en")
 
   const hd = useMemo(() => new Holidays("JP"), [])
+
+  useEffect(() => {
+    const savedLanguage = localStorage.getItem("settingsLanguage")
+    if (savedLanguage === "jp" || savedLanguage === "en") {
+      setLanguage(savedLanguage)
+    }
+  }, [])
+
+  useEffect(() => {
+    localStorage.setItem("settingsLanguage", language)
+  }, [language])
 
   function isHoliday(date: Date) {
     const day = date.getDay()
@@ -369,20 +383,20 @@ export default function HomeClient() {
       ratio.weekdays.research,
       ratio.weekdays.life,
     ].join(",")
-  
+
     const hdValues = [
       ratio.holidays.commission,
       ratio.holidays.creation,
       ratio.holidays.research,
       ratio.holidays.life,
     ].join(",")
-  
+
     const current = new Date()
     const sharedAtMs = String(current.getTime())
     const tzOffset = String(current.getTimezoneOffset())
     const sharedLabel = `${current.getFullYear()}.${current.getMonth() + 1}.${current.getDate()} ${current.getHours()}h ${current.getMinutes()}m ${current.getSeconds()}s`
     const v = String(current.getTime())
-  
+
     const params = new URLSearchParams()
     params.set("wd", wd)
     params.set("hd", hdValues)
@@ -390,11 +404,11 @@ export default function HomeClient() {
     params.set("tzOffset", tzOffset)
     params.set("sharedLabel", sharedLabel)
     params.set("v", v)
-  
+
     if (typeof window === "undefined") {
       return `/?${params.toString()}`
     }
-  
+
     return `${window.location.origin}?${params.toString()}`
   }
 
@@ -434,6 +448,35 @@ export default function HomeClient() {
     )
   }
 
+  const labels =
+    language === "jp"
+      ? {
+          total: "年間",
+          commission: "仕事",
+          creation: "制作",
+          research: "研究",
+          life: "家事育児",
+          sleep: "睡眠",
+          y: "年",
+          m: "月",
+          d: "日",
+          w: "平日",
+          h: "土日祝",
+        }
+      : {
+          total: "Total",
+          commission: "Commission",
+          creation: "Creation",
+          research: "Research",
+          life: "Life",
+          sleep: "Sleep",
+          y: "Y",
+          m: "M",
+          d: "D",
+          w: "W",
+          h: "H",
+        }
+
   function MetricLine({
     label,
     remainHours,
@@ -445,6 +488,31 @@ export default function HomeClient() {
     totalHours: number
     showDays?: boolean
   }) {
+    if (language === "jp") {
+      return (
+        <div className="break-words">
+          <span className="inline-block min-w-[3.2rem]">{label} :</span>{" "}
+          {Math.round(remainHours)}
+          <span className="text-[0.85em] text-gray-500">時間</span>
+          {showDays && (
+            <span className="text-gray-400 ml-0.5">
+              ({hoursToDays(remainHours)}
+              <span className="text-[0.85em]">日</span>)
+            </span>
+          )}
+          /
+          {Math.round(totalHours)}
+          <span className="text-[0.85em] text-gray-500">時間</span>
+          {showDays && (
+            <span className="text-gray-400 ml-0.5">
+              ({hoursToDays(totalHours)}
+              <span className="text-[0.85em]">日</span>)
+            </span>
+          )}
+        </div>
+      )
+    }
+
     return (
       <div className="break-words">
         <span className="inline-block min-w-[1.6rem]">{label} :</span>{" "}
@@ -478,28 +546,28 @@ export default function HomeClient() {
 
         <div className="mt-3 text-xs sm:text-sm leading-7 sm:leading-8 break-words">
           <MetricLine
-            label="Y"
+            label={labels.y}
             remainHours={data.yearRemainHours}
             totalHours={data.yearTotalHours}
           />
           <MetricLine
-            label="M"
+            label={labels.m}
             remainHours={data.monthRemainHours}
             totalHours={data.monthTotalHours}
           />
           <MetricLine
-            label="D"
+            label={labels.d}
             remainHours={data.dayRemainHours}
             totalHours={data.dayTotalHours}
             showDays={false}
           />
           <MetricLine
-            label="W"
+            label={labels.w}
             remainHours={data.weekdayRemainHours}
             totalHours={data.weekdayTotalHours}
           />
           <MetricLine
-            label="H"
+            label={labels.h}
             remainHours={data.holidayRemainHours}
             totalHours={data.holidayTotalHours}
           />
@@ -510,26 +578,50 @@ export default function HomeClient() {
 
   return (
     <main className="font-sans max-w-4xl mx-auto px-5 py-8 sm:px-10 sm:py-16">
-      <button
-        onClick={copyShareUrl}
-        aria-label="Copy share URL"
-        className="
-          fixed top-4 right-4 sm:top-5 sm:right-5 z-50
-          h-11 w-11 sm:h-12 sm:w-12
-          rounded-full
-          border border-black/10
-          bg-white/85
-          text-black
-          shadow-[0_8px_30px_rgba(0,0,0,0.08)]
-          backdrop-blur-md
-          flex items-center justify-center
-          hover:bg-white
-          active:scale-95
-          transition
-        "
-      >
-        <ShareIcon />
-      </button>
+      <div className="fixed top-4 right-4 sm:top-5 sm:right-5 z-50 flex gap-3">
+        <button
+          type="button"
+          onClick={() => setLanguage((prev) => (prev === "en" ? "jp" : "en"))}
+          aria-label="日本語 / English"
+          title="日本語 / English"
+          className="
+            h-11 w-11 sm:h-12 sm:w-12
+            rounded-full
+            border border-black/10
+            bg-white/85
+            text-black
+            shadow-[0_8px_30px_rgba(0,0,0,0.08)]
+            backdrop-blur-md
+            flex items-center justify-center
+            hover:bg-white
+            active:scale-95
+            transition
+            font-semibold text-sm
+          "
+        >
+          Aあ
+        </button>
+
+        <button
+          onClick={copyShareUrl}
+          aria-label="Copy share URL"
+          className="
+            h-11 w-11 sm:h-12 sm:w-12
+            rounded-full
+            border border-black/10
+            bg-white/85
+            text-black
+            shadow-[0_8px_30px_rgba(0,0,0,0.08)]
+            backdrop-blur-md
+            flex items-center justify-center
+            hover:bg-white
+            active:scale-95
+            transition
+          "
+        >
+          <ShareIcon />
+        </button>
+      </div>
 
       <h1 className="text-2xl sm:text-4xl font-bold leading-tight break-words">
         {formatCurrentTime(now)}
@@ -556,12 +648,12 @@ export default function HomeClient() {
       </div>
 
       <div className="mt-12 sm:mt-20 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-10 sm:gap-12 text-sm">
-        {block("Total", "#000", metrics.total)}
-        {block("Commission", "#3B82F6", metrics.commission)}
-        {block("Creation", "#9333EA", metrics.creation)}
-        {block("Research", "#F59E0B", metrics.research)}
-        {block("Life", "#10B981", metrics.life)}
-        {block("Sleep", "#EF4444", metrics.sleep)}
+        {block(labels.total, "#000", metrics.total)}
+        {block(labels.commission, "#3B82F6", metrics.commission)}
+        {block(labels.creation, "#9333EA", metrics.creation)}
+        {block(labels.research, "#F59E0B", metrics.research)}
+        {block(labels.life, "#10B981", metrics.life)}
+        {block(labels.sleep, "#EF4444", metrics.sleep)}
       </div>
 
       <div className="mt-16 sm:mt-24 flex justify-center">
