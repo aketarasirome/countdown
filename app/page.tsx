@@ -9,15 +9,6 @@ function first(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value
 }
 
-function formatSharedAtText(value: string | undefined) {
-  if (!value) return null
-
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return null
-
-  return `${date.getFullYear()}.${date.getMonth() + 1}.${date.getDate()} ${date.getHours()}h ${date.getMinutes()}m ${date.getSeconds()}s`
-}
-
 export const dynamic = "force-dynamic"
 
 export async function generateMetadata({
@@ -27,16 +18,21 @@ export async function generateMetadata({
 
   const wd = first(params.wd) ?? ""
   const hd = first(params.hd) ?? ""
-  const sharedAt = first(params.sharedAt) ?? ""
+  const sharedAtMs = first(params.sharedAtMs) ?? ""
+  const tzOffset = first(params.tzOffset) ?? ""
+  const sharedLabel = first(params.sharedLabel) ?? ""
   const v = first(params.v) ?? ""
 
   const urlParams = new URLSearchParams()
   if (wd) urlParams.set("wd", wd)
   if (hd) urlParams.set("hd", hd)
-  if (sharedAt) urlParams.set("sharedAt", sharedAt)
+  if (sharedAtMs) urlParams.set("sharedAtMs", sharedAtMs)
+  if (tzOffset) urlParams.set("tzOffset", tzOffset)
+  if (sharedLabel) urlParams.set("sharedLabel", sharedLabel)
   if (v) urlParams.set("v", v)
 
   const queryString = urlParams.toString()
+
   const pageUrl = queryString
     ? `https://countdown-00.vercel.app/?${queryString}`
     : "https://countdown-00.vercel.app/"
@@ -45,11 +41,9 @@ export async function generateMetadata({
     ? `https://countdown-00.vercel.app/api/og?${queryString}`
     : "https://countdown-00.vercel.app/api/og"
 
-  const sharedTimeText = formatSharedAtText(sharedAt)
-
   const title = "Life Countdown"
-  const description = sharedTimeText
-    ? `Visualize how you spend the remaining hours of the year. Shared at ${sharedTimeText}.`
+  const description = sharedLabel
+    ? `Visualize how you spend the remaining hours of the year. Shared at ${sharedLabel}.`
     : "Visualize how you spend the remaining hours of the year."
 
   return {

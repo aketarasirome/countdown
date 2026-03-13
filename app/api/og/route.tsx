@@ -20,38 +20,42 @@ function parseGroup(value: string | null) {
 }
 
 function getShiftedDate(sharedAtMs: string | null, tzOffset: string | null) {
+  if (!sharedAtMs || !tzOffset) return null
+
   const ms = Number(sharedAtMs)
-  const offset = Number(tzOffset ?? "0")
+  const offset = Number(tzOffset)
 
   if (Number.isNaN(ms) || Number.isNaN(offset)) return null
 
   return new Date(ms - offset * 60 * 1000)
 }
 
-function formatSharedAt(sharedAtMs: string | null, tzOffset: string | null) {
-  const shifted = getShiftedDate(sharedAtMs, tzOffset)
-  if (!shifted) return "Now"
-
-  return `${shifted.getUTCFullYear()}.${shifted.getUTCMonth() + 1}.${shifted.getUTCDate()} ${shifted.getUTCHours()}h ${shifted.getUTCMinutes()}m ${shifted.getUTCSeconds()}s`
-}
-
 function remainingTimeAt(sharedAtMs: string | null, tzOffset: string | null) {
   const shifted = getShiftedDate(sharedAtMs, tzOffset)
 
   if (!shifted) {
-    return { h: 0, m: 0, s: 0, totalHours: 0 }
+    const now = new Date()
+    const end = new Date(now.getFullYear(), 11, 31, 23, 59, 59)
+    const diff = Math.max(0, end.getTime() - now.getTime())
+
+    return {
+      h: Math.floor(diff / 1000 / 60 / 60),
+      m: Math.floor((diff / 1000 / 60) % 60),
+      s: Math.floor((diff / 1000) % 60),
+      totalHours: diff / 1000 / 60 / 60,
+    }
   }
 
   const localYear = shifted.getUTCFullYear()
   const endShiftedMs = Date.UTC(localYear, 11, 31, 23, 59, 59)
   const diff = Math.max(0, endShiftedMs - shifted.getTime())
 
-  const h = Math.floor(diff / 1000 / 60 / 60)
-  const m = Math.floor((diff / 1000 / 60) % 60)
-  const s = Math.floor((diff / 1000) % 60)
-  const totalHours = diff / 1000 / 60 / 60
-
-  return { h, m, s, totalHours }
+  return {
+    h: Math.floor(diff / 1000 / 60 / 60),
+    m: Math.floor((diff / 1000 / 60) % 60),
+    s: Math.floor((diff / 1000) % 60),
+    totalHours: diff / 1000 / 60 / 60,
+  }
 }
 
 export async function GET(request: Request) {
@@ -65,8 +69,15 @@ export async function GET(request: Request) {
 
   const sharedAtMs = searchParams.get("sharedAtMs")
   const tzOffset = searchParams.get("tzOffset")
+  const sharedLabel = searchParams.get("sharedLabel")
 
-  const titleTime = formatSharedAt(sharedAtMs, tzOffset)
+  const titleTime =
+    sharedLabel ||
+    (() => {
+      const now = new Date()
+      return `${now.getFullYear()}.${now.getMonth() + 1}.${now.getDate()} ${now.getHours()}h ${now.getMinutes()}m ${now.getSeconds()}s`
+    })()
+
   const remainTime = remainingTimeAt(sharedAtMs, tzOffset)
   const remain = remainTime.totalHours
 

@@ -369,30 +369,32 @@ export default function HomeClient() {
       ratio.weekdays.research,
       ratio.weekdays.life,
     ].join(",")
-
+  
     const hdValues = [
       ratio.holidays.commission,
       ratio.holidays.creation,
       ratio.holidays.research,
       ratio.holidays.life,
     ].join(",")
-
+  
     const current = new Date()
     const sharedAtMs = String(current.getTime())
     const tzOffset = String(current.getTimezoneOffset())
+    const sharedLabel = `${current.getFullYear()}.${current.getMonth() + 1}.${current.getDate()} ${current.getHours()}h ${current.getMinutes()}m ${current.getSeconds()}s`
     const v = String(current.getTime())
-
+  
     const params = new URLSearchParams()
     params.set("wd", wd)
     params.set("hd", hdValues)
     params.set("sharedAtMs", sharedAtMs)
     params.set("tzOffset", tzOffset)
+    params.set("sharedLabel", sharedLabel)
     params.set("v", v)
-
+  
     if (typeof window === "undefined") {
       return `/?${params.toString()}`
     }
-
+  
     return `${window.location.origin}?${params.toString()}`
   }
 
