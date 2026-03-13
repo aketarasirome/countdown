@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://countdown-00-git-main-aketarasiromes-projects.vercel.app"),
+  metadataBase: new URL("https://countdown-00.vercel.app"),
   title: "Life Countdown",
   description: "Visualize how you spend the remaining hours of the year.",
 };
