@@ -27,17 +27,44 @@ function formatSharedAt(value: string | null) {
 
 function remainingTimeAt(sharedAt: string | null) {
   const now = sharedAt ? new Date(sharedAt) : new Date()
-  if (Number.isNaN(now.getTime())) return { h: 0, m: 0, s: 0 }
+
+  if (Number.isNaN(now.getTime())) {
+    return { h: 0, m: 0, s: 0, totalHours: 0 }
+  }
 
   const end = new Date(now.getFullYear(), 11, 31, 23, 59, 59)
-
   const diff = Math.max(0, end.getTime() - now.getTime())
 
   const h = Math.floor(diff / 1000 / 60 / 60)
   const m = Math.floor((diff / 1000 / 60) % 60)
   const s = Math.floor((diff / 1000) % 60)
+  const totalHours = diff / 1000 / 60 / 60
 
-  return { h, m, s }
+  return { h, m, s, totalHours }
+}
+
+async function loadGoogleFont(font: string, weight: number, text: string) {
+  const url = `https://fonts.googleapis.com/css2?family=${font.replace(
+    / /g,
+    "+"
+  )}:wght@${weight}&text=${encodeURIComponent(text)}`
+
+  const css = await fetch(url, {
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    },
+    cache: "force-cache",
+  }).then((res) => res.text())
+
+  const match = css.match(/src: url\(([^)]+)\) format\('(opentype|truetype|woff2|woff)'\)/)
+
+  if (!match) {
+    throw new Error(`Failed to load font: ${font} ${weight}`)
+  }
+
+  const fontFileUrl = match[1]
+  return fetch(fontFileUrl).then((res) => res.arrayBuffer())
 }
 
 export async function GET(request: Request) {
@@ -45,19 +72,22 @@ export async function GET(request: Request) {
 
   const weekdays =
     parseGroup(searchParams.get("wd")) ?? buildRatioSet(40, 20, 10, 10)
+
   const holidays =
     parseGroup(searchParams.get("hd")) ?? buildRatioSet(10, 40, 10, 20)
+
   const sharedAt = searchParams.get("sharedAt")
 
   const titleTime = formatSharedAt(sharedAt)
   const remainTime = remainingTimeAt(sharedAt)
-  const remain = remainTime.h
+  const remain = remainTime.totalHours
 
   const commission = Math.round(remain * (weekdays.commission / 100))
   const creation = Math.round(remain * (weekdays.creation / 100))
   const research = Math.round(remain * (weekdays.research / 100))
   const life = Math.round(remain * (weekdays.life / 100))
   const sleep = Math.round(remain * (weekdays.sleep / 100))
+
   const elapsed = Math.max(
     0,
     365 * 24 - (commission + creation + research + life + sleep)
@@ -68,6 +98,12 @@ export async function GET(request: Request) {
 
   const widthFor = (hours: number) =>
     Math.max(0, Math.round((hours / totalHours) * totalWidth))
+
+  const fontText =
+    "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ.,:()/- hmsTotalCommissionCreationResearchLifeSleep"
+
+  const geistRegular = await loadGoogleFont("Geist", 400, fontText)
+  const geistBold = await loadGoogleFont("Geist", 700, fontText)
 
   return new ImageResponse(
     (
@@ -80,6 +116,7 @@ export async function GET(request: Request) {
           backgroundColor: "#f3f3f1",
           padding: "64px 68px",
           color: "#111111",
+          fontFamily: "Geist",
         }}
       >
         <div
@@ -88,6 +125,7 @@ export async function GET(request: Request) {
             fontSize: 44,
             fontWeight: 700,
             lineHeight: 1.1,
+            letterSpacing: "-0.03em",
             marginBottom: 56,
           }}
         >
@@ -100,10 +138,11 @@ export async function GET(request: Request) {
             fontSize: 82,
             fontWeight: 700,
             lineHeight: 1,
+            letterSpacing: "-0.05em",
             marginBottom: 56,
           }}
         >
-          TEST{remainTime.h}h {remainTime.m}m {remainTime.s}s
+          {remainTime.h}h {remainTime.m}m {remainTime.s}s
         </div>
 
         <div
@@ -175,6 +214,7 @@ export async function GET(request: Request) {
             gap: "22px",
             color: "#5c5c5c",
             fontSize: 28,
+            fontWeight: 400,
           }}
         >
           {[
@@ -211,6 +251,20 @@ export async function GET(request: Request) {
     {
       width: 1200,
       height: 630,
+      fonts: [
+        {
+          name: "Geist",
+          data: geistRegular,
+          weight: 400,
+          style: "normal",
+        },
+        {
+          name: "Geist",
+          data: geistBold,
+          weight: 700,
+          style: "normal",
+        },
+      ],
     }
   )
 }
