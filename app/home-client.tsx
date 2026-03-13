@@ -461,7 +461,7 @@ export default function HomeClient() {
           m: "月",
           d: "日",
           w: "平日",
-          h: "土日祝",
+          h: "休日",
         }
       : {
           total: "Total",
