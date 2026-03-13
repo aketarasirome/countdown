@@ -19,21 +19,32 @@ function parseGroup(value: string | null) {
   return buildRatioSet(parts[0], parts[1], parts[2], parts[3])
 }
 
-function formatSharedAt(value: string | null) {
-  const date = value ? new Date(value) : new Date()
-  if (Number.isNaN(date.getTime())) return "Now"
-  return `${date.getFullYear()}.${date.getMonth() + 1}.${date.getDate()} ${date.getHours()}h ${date.getMinutes()}m ${date.getSeconds()}s`
+function getShiftedDate(sharedAtMs: string | null, tzOffset: string | null) {
+  const ms = Number(sharedAtMs)
+  const offset = Number(tzOffset ?? "0")
+
+  if (Number.isNaN(ms) || Number.isNaN(offset)) return null
+
+  return new Date(ms - offset * 60 * 1000)
 }
 
-function remainingTimeAt(sharedAt: string | null) {
-  const now = sharedAt ? new Date(sharedAt) : new Date()
+function formatSharedAt(sharedAtMs: string | null, tzOffset: string | null) {
+  const shifted = getShiftedDate(sharedAtMs, tzOffset)
+  if (!shifted) return "Now"
 
-  if (Number.isNaN(now.getTime())) {
+  return `${shifted.getUTCFullYear()}.${shifted.getUTCMonth() + 1}.${shifted.getUTCDate()} ${shifted.getUTCHours()}h ${shifted.getUTCMinutes()}m ${shifted.getUTCSeconds()}s`
+}
+
+function remainingTimeAt(sharedAtMs: string | null, tzOffset: string | null) {
+  const shifted = getShiftedDate(sharedAtMs, tzOffset)
+
+  if (!shifted) {
     return { h: 0, m: 0, s: 0, totalHours: 0 }
   }
 
-  const end = new Date(now.getFullYear(), 11, 31, 23, 59, 59)
-  const diff = Math.max(0, end.getTime() - now.getTime())
+  const localYear = shifted.getUTCFullYear()
+  const endShiftedMs = Date.UTC(localYear, 11, 31, 23, 59, 59)
+  const diff = Math.max(0, endShiftedMs - shifted.getTime())
 
   const h = Math.floor(diff / 1000 / 60 / 60)
   const m = Math.floor((diff / 1000 / 60) % 60)
@@ -52,10 +63,11 @@ export async function GET(request: Request) {
   const holidays =
     parseGroup(searchParams.get("hd")) ?? buildRatioSet(10, 40, 10, 20)
 
-  const sharedAt = searchParams.get("sharedAt")
+  const sharedAtMs = searchParams.get("sharedAtMs")
+  const tzOffset = searchParams.get("tzOffset")
 
-  const titleTime = formatSharedAt(sharedAt)
-  const remainTime = remainingTimeAt(sharedAt)
+  const titleTime = formatSharedAt(sharedAtMs, tzOffset)
+  const remainTime = remainingTimeAt(sharedAtMs, tzOffset)
   const remain = remainTime.totalHours
 
   const commission = Math.round(remain * (weekdays.commission / 100))
@@ -127,54 +139,12 @@ export async function GET(request: Request) {
             marginBottom: 56,
           }}
         >
-          <div
-            style={{
-              display: "flex",
-              width: `${widthFor(elapsed)}px`,
-              height: "72px",
-              backgroundColor: "#000000",
-            }}
-          />
-          <div
-            style={{
-              display: "flex",
-              width: `${widthFor(commission)}px`,
-              height: "72px",
-              backgroundColor: "#3B82F6",
-            }}
-          />
-          <div
-            style={{
-              display: "flex",
-              width: `${widthFor(creation)}px`,
-              height: "72px",
-              backgroundColor: "#9333EA",
-            }}
-          />
-          <div
-            style={{
-              display: "flex",
-              width: `${widthFor(research)}px`,
-              height: "72px",
-              backgroundColor: "#F59E0B",
-            }}
-          />
-          <div
-            style={{
-              display: "flex",
-              width: `${widthFor(life)}px`,
-              height: "72px",
-              backgroundColor: "#10B981",
-            }}
-          />
-          <div
-            style={{
-              display: "flex",
-              width: `${widthFor(sleep)}px`,
-              height: "72px",
-              backgroundColor: "#EF4444",
-            }}
-          />
+          <div style={{ display: "flex", width: `${widthFor(elapsed)}px`, height: "72px", backgroundColor: "#000000" }} />
+          <div style={{ display: "flex", width: `${widthFor(commission)}px`, height: "72px", backgroundColor: "#3B82F6" }} />
+          <div style={{ display: "flex", width: `${widthFor(creation)}px`, height: "72px", backgroundColor: "#9333EA" }} />
+          <div style={{ display: "flex", width: `${widthFor(research)}px`, height: "72px", backgroundColor: "#F59E0B" }} />
+          <div style={{ display: "flex", width: `${widthFor(life)}px`, height: "72px", backgroundColor: "#10B981" }} />
+          <div style={{ display: "flex", width: `${widthFor(sleep)}px`, height: "72px", backgroundColor: "#EF4444" }} />
         </div>
 
         <div
@@ -189,7 +159,7 @@ export async function GET(request: Request) {
           }}
         >
           {[
-            ["#000000", "Total"],
+            ["#000000", "Elapsed"],
             ["#3B82F6", "Commission"],
             ["#9333EA", "Creation"],
             ["#F59E0B", "Research"],
