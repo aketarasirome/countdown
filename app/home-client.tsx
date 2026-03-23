@@ -505,6 +505,7 @@ export default function HomeClient() {
             <span className="ml-0.5">
               (
               <span
+                className={highlightRemainDaysColor ? "" : "text-gray-400"}
                 style={
                   highlightRemainDaysColor
                     ? { color: highlightRemainDaysColor }
@@ -538,6 +539,7 @@ export default function HomeClient() {
           <span className="ml-0.5">
             (
             <span
+              className={highlightRemainDaysColor ? "" : "text-gray-400"}
               style={
                 highlightRemainDaysColor
                   ? { color: highlightRemainDaysColor }
