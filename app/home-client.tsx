@@ -86,6 +86,7 @@ function parseRatioFromUrl(): Ratio | null {
 
 export default function HomeClient() {
   const YEAR_HOURS = 365 * 24
+  const TOTAL_DAY_HIGHLIGHT = "#4B5563"
 
   const [ratio, setRatio] = useState<Ratio>(defaultRatio)
   const [now, setNow] = useState(new Date())
@@ -483,12 +484,17 @@ export default function HomeClient() {
     remainHours,
     totalHours,
     showDays = true,
+    highlightRemainDaysColor,
   }: {
     label: string
     remainHours: number
     totalHours: number
     showDays?: boolean
+    highlightRemainDaysColor?: string
   }) {
+    const remainDays = hoursToDays(remainHours)
+    const totalDays = hoursToDays(totalHours)
+
     if (language === "jp") {
       return (
         <div className="break-words">
@@ -496,9 +502,19 @@ export default function HomeClient() {
           {Math.round(remainHours)}
           <span className="text-[0.85em] text-gray-500">時間</span>
           {showDays && (
-            <span className="text-gray-400 ml-0.5">
-              ({hoursToDays(remainHours)}
-              <span className="text-[0.85em]">日</span>)
+            <span className="ml-0.5">
+              (
+              <span
+                style={
+                  highlightRemainDaysColor
+                    ? { color: highlightRemainDaysColor }
+                    : undefined
+                }
+              >
+                {remainDays}
+                <span className="text-[0.85em]">日</span>
+              </span>
+              )
             </span>
           )}
           /
@@ -506,7 +522,7 @@ export default function HomeClient() {
           <span className="text-[0.85em] text-gray-500">時間</span>
           {showDays && (
             <span className="text-gray-400 ml-0.5">
-              ({hoursToDays(totalHours)}
+              ({totalDays}
               <span className="text-[0.85em]">日</span>)
             </span>
           )}
@@ -519,22 +535,37 @@ export default function HomeClient() {
         <span className="inline-block min-w-[1.6rem]">{label} :</span>{" "}
         {Math.round(remainHours)}h
         {showDays && (
-          <span className="text-gray-400 ml-0.5">
-            ({hoursToDays(remainHours)}d)
+          <span className="ml-0.5">
+            (
+            <span
+              style={
+                highlightRemainDaysColor
+                  ? { color: highlightRemainDaysColor }
+                  : undefined
+              }
+            >
+              {remainDays}d
+            </span>
+            )
           </span>
         )}
         /
         {Math.round(totalHours)}h
         {showDays && (
           <span className="text-gray-400 ml-0.5">
-            ({hoursToDays(totalHours)}d)
+            ({totalDays}d)
           </span>
         )}
       </div>
     )
   }
 
-  function block(title: string, color: string, data: ItemMetrics) {
+  function block(
+    title: string,
+    color: string,
+    data: ItemMetrics,
+    annualRemainDaysColor?: string
+  ) {
     return (
       <div className="min-w-0">
         <div className="flex items-center gap-2">
@@ -550,6 +581,7 @@ export default function HomeClient() {
             label={labels.y}
             remainHours={data.yearRemainHours}
             totalHours={data.yearTotalHours}
+            highlightRemainDaysColor={annualRemainDaysColor}
           />
           <MetricLine
             label={labels.m}
@@ -665,12 +697,12 @@ export default function HomeClient() {
       </div>
 
       <div className="mt-12 sm:mt-20 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-10 sm:gap-12 text-sm">
-        {block(labels.total, "#000", metrics.total)}
-        {block(labels.commission, "#3B82F6", metrics.commission)}
-        {block(labels.creation, "#9333EA", metrics.creation)}
-        {block(labels.research, "#F59E0B", metrics.research)}
-        {block(labels.life, "#10B981", metrics.life)}
-        {block(labels.sleep, "#EF4444", metrics.sleep)}
+        {block(labels.total, "#000000", metrics.total, TOTAL_DAY_HIGHLIGHT)}
+        {block(labels.commission, "#3B82F6", metrics.commission, "#3B82F6")}
+        {block(labels.creation, "#9333EA", metrics.creation, "#9333EA")}
+        {block(labels.research, "#F59E0B", metrics.research, "#F59E0B")}
+        {block(labels.life, "#10B981", metrics.life, "#10B981")}
+        {block(labels.sleep, "#EF4444", metrics.sleep, "#EF4444")}
       </div>
 
       <div className="mt-16 sm:mt-24 flex justify-center">
@@ -704,7 +736,6 @@ export default function HomeClient() {
       >
         Copyright 2026 aketarasirome
       </footer>
-
     </main>
   )
 }
